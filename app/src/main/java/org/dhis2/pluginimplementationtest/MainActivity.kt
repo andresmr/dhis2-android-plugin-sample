@@ -46,25 +46,7 @@ fun HomeScreenPreview(
     pluginContent: @Composable () -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        // Simulates the plugin slot rendered above the program list
         pluginContent()
-
-        HorizontalDivider(color = Color.LightGray, thickness = 0.5.dp)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Program List",
-            style = MaterialTheme.typography.titleSmall,
-            color = Color.Gray,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        repeat(3) { index ->
-            Text(
-                text = "Program ${index + 1}",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-        }
     }
 }
 

@@ -62,7 +62,7 @@ dependencies {
 // ──────────────────────────────────────────────────────────────────────────────
 
 val pluginId = "org.dhis2.myplugin"
-val pluginVersion = "1.0.0"
+val pluginVersion = "1.1.0"
 
 fun resolveAndroidSdkDir(): String {
     System.getenv("ANDROID_HOME")?.let { return it }
