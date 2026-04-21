@@ -1,12 +1,16 @@
 package org.dhis2.pluginimplementationtest
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -15,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -24,13 +29,22 @@ import org.dhis2.mobile.plugin.sdk.Dhis2PluginContext
 import org.dhis2.mobile.plugin.sdk.InjectionPoint
 import org.dhis2.mobile.plugin.sdk.PluginMetadata
 import org.dhis2.mobile.plugin.sdk.dto.TrackedEntityInstanceDto
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.Res
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_and_more
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_error_prefix
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_icon
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_loading
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_teis_count
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_title
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 private const val CHILD_PROGRAMME_UID = "IpHINAT79UW"
 
 class MyPlugin : Dhis2Plugin {
     override val metadata = PluginMetadata(
         id = "org.dhis2.myplugin",
-        version = "1.1.0",
+        version = "1.2.0",
         entryPoint = "org.dhis2.pluginimplementationtest.MyPlugin",
         allowedProgramUids = listOf(CHILD_PROGRAMME_UID),
         injectionPoints = listOf(InjectionPoint.HOME_ABOVE_PROGRAM_LIST),
@@ -71,27 +85,37 @@ class MyPlugin : Dhis2Plugin {
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Child Programme ($CHILD_PROGRAMME_UID)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Image (not Icon) so the drawable's intrinsic green shield colour
+                    // shows through — makes resource loading visibly unambiguous.
+                    Image(
+                        painter = painterResource(Res.drawable.plugin_icon),
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "${stringResource(Res.string.plugin_title)} ($CHILD_PROGRAMME_UID)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 when (val state = fetch) {
                     is FetchState.Loading -> Text(
-                        text = "Loading tracked entity instances…",
+                        text = stringResource(Res.string.plugin_loading),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF555555),
                     )
                     is FetchState.Failed -> Text(
-                        text = "Failed to read TEIs: ${state.message}",
+                        text = "${stringResource(Res.string.plugin_error_prefix)} ${state.message}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFFB00020),
                     )
                     is FetchState.Loaded -> {
                         Text(
-                            text = "${state.teis.size} tracked entity instance(s) available offline",
+                            text = stringResource(Res.string.plugin_teis_count, state.teis.size),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF555555),
                         )
@@ -106,7 +130,7 @@ class MyPlugin : Dhis2Plugin {
                         if (state.teis.size > 3) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "  … and ${state.teis.size - 3} more",
+                                text = "  " + stringResource(Res.string.plugin_and_more, state.teis.size - 3),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF888888),
                             )

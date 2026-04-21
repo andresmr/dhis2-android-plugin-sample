@@ -1,108 +1,113 @@
 # CLAUDE.md — DHIS2 Android plugin sample
 
-A sample Android project that produces a standalone DEX plugin for the DHIS2
-Android Capture App's plugin system. The host repo lives at
-`~/StudioProjects/ai-dhis2-android-capture-app` on branch `feature/plugin-system`.
+Produces a **signed zip bundle** plugin for the DHIS2 Android Capture App.
+Host repo: `~/StudioProjects/ai-dhis2-android-capture-app` on branch
+`feature/plugin-system`. Full docs: `docs/plugin-system.md` there.
 
-## Two-module layout — deliberate
+## Layout
 
 ```
 Pluginimplementationtest/
-├── app/      # com.android.application — dev-only harness. MainActivity +
-│             #   StubDhis2PluginContext instantiate MyPlugin and render it
-│             #   inside a mocked "program list" scaffold. Install it with
-│             #   `:app:installDebug` to preview without the Capture App.
-└── plugin/   # com.android.library  — the actual plugin. Produces the
-              #   shippable DEX via `:plugin:buildPluginDex`.
+├── app/      # Android application — dev-only preview harness.
+│             # Uses CMP 1.10.3 (same Compose version as :plugin + Capture App).
+│             # A stagePluginAssets task copies :plugin's composeResources into
+│             # :app's assets at build time.
+└── plugin/   # Kotlin Multiplatform + android.kotlin.multiplatform.library + CMP.
+              # Contains MyPlugin + resources. Produces the shippable signed zip.
 ```
 
-Only `:plugin` is distributed. `:app` exists so plugin authors can click-and-run.
+Only `:plugin`'s output is shipped. `:app` is not.
 
-## Build commands
+## Commands
 
 ```bash
-# Produce the standalone plugin DEX (run from repo root):
-./gradlew :plugin:buildPluginDex
-# → plugin/build/outputs/plugin-dex/{pluginId}-{pluginVersion}.dex
-#   prints size + sha256 to the console
-
-# Preview the plugin in the harness app:
-./gradlew :app:installDebug
-
-# Standard Gradle hygiene:
-./gradlew :plugin:assembleRelease   # AAR (intermediate for buildPluginDex)
-./gradlew :app:assembleDebug        # harness APK only
+./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
+./gradlew :app:installDebug            # preview harness on emulator
 ```
 
-The `buildPluginDex` task is defined in-line in `plugin/build.gradle.kts` — not
-shipped as a Gradle plugin yet. If you fork to a new plugin, copy the task
-block.
+## Rules (read before editing `plugin/build.gradle.kts`)
 
-## Non-obvious rules (read before editing `plugin/build.gradle.kts`)
+1. **`compileOnly` everything host-provided, except `compose.components.resources`.**
+   The Capture App provides Compose/Material3/plugin-sdk at runtime via
+   `InMemoryDexClassLoader`'s parent delegation — bundling them causes DEX bloat
+   and `ClassCastException`. **But** `compose.components.resources` must be
+   `implementation` — it's the CMP plugin's opt-in signal to generate the `Res`
+   accessor class. Swap it to `compileOnly` and `Res.*` imports stop resolving.
+2. **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
+   not `com.android.library`.** AGP 9 disallows mixing plain Android library
+   with KMP.
+3. **Set `compose.resources { packageOfResClass = "…" }` explicitly.** Without
+   it CMP derives the package from the root project name (which has spaces →
+   backtick-escaped imports).
+4. **Filename convention** (the host expects): `{pluginId}-{pluginVersion}.zip`.
+   The Gradle `val`s at the top of `plugin/build.gradle.kts` drive the filename
+   and must match the `PluginMetadata` in `MyPlugin.kt`.
+5. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
+   caches by `{id}-{version}.zip`; rebuilding at the same version reuses the
+   old cache. Symptom: "my code changes aren't showing."
 
-1. **Every host-provided dep in `:plugin` must be `compileOnly`.** The Capture
-   App's `InMemoryDexClassLoader` uses the host's class loader as parent, so
-   `plugin-sdk`, Compose, Material3, AndroidX all resolve at runtime from the
-   host. Declaring them as `implementation` bloats the DEX and risks
-   `ClassCastException: … not assignable to Dhis2Plugin` from duplicated
-   class definitions.
-2. **`:plugin` is a library, not an application.** An application build
-   produces multi-dex APKs where `classes.dex` is Compose/Material bloat and
-   the plugin's own class lives in `classes2.dex`/`classes3.dex`. Using a
-   library module + `d8` on `classes.jar` sidesteps that entirely.
-3. **Filename convention**: the host app expects `{pluginId}-{pluginVersion}.dex`.
-   `buildPluginDex` reads `pluginId` and `pluginVersion` from the `val`s at
-   the top of `plugin/build.gradle.kts`. Keep them in sync with the
-   `PluginMetadata` hard-coded in `MyPlugin.kt`.
-4. **Bump `pluginVersion` to invalidate the device cache.** The host caches
-   the downloaded DEX as `{id}-{version}.dex` in `filesDir/plugins/`. A rebuilt
-   DEX at the same version reuses the old cache — symptom is "my code changes
-   aren't visible". Either bump, or
-   `adb shell run-as com.dhis2.debug rm -rf files/plugins`.
+## Resources
 
-## Local testing flow (end-to-end)
+```
+plugin/src/commonMain/composeResources/
+├── values/strings.xml           # default (English)
+├── values-es/strings.xml        # Spanish (add more as values-{locale}/)
+└── drawable/plugin_icon.xml
+```
 
-The host repo has full instructions in `docs/plugin-system.md` (§9). Summary:
+Access from code:
 
-1. In the host repo: `./gradlew :plugin-sdk:publishToMavenLocal`.
-2. Here: `./gradlew :plugin:buildPluginDex`. Record the printed SHA-256.
-3. `cd plugin/build/outputs/plugin-dex && python3 -m http.server 8080`.
-4. Point the host at the DEX — either:
-   - **Server-side**: write to DHIS2 dataStore namespace `dhis2AndroidPlugins`,
-     key `config`, with `{"plugins": [{...}]}`.
-   - **Local hack**: edit `FALLBACK_CONFIG_JSON` in
-     `plugin/src/main/java/org/dhis2/mobile/plugin/data/AppHubPluginRepository.kt`
-     in the host repo. (Marked `TODO: remove` — revert before merging.)
-5. Emulator URL: `http://10.0.2.2:8080/{pluginId}-{pluginVersion}.dex`.
-6. Rebuild host, log in. Expected log:
-   `Loading plugin '…' v… from DEX (16404 bytes)` and
-   `Plugin '…' v… loaded successfully`.
+```kotlin
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.Res
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_title
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.painterResource
+
+Text(stringResource(Res.string.plugin_title))
+Image(painter = painterResource(Res.drawable.plugin_icon), contentDescription = null)
+```
+
+Runtime resolution differs by host:
+
+- **Capture App.** `PluginLoader` extracts the zip; `PluginSlot` provides a
+  per-plugin `FileSystemResourceReader` via
+  `CompositionLocalProvider(LocalResourceReader …)`. AssetManager is not
+  involved.
+- **Harness.** The `stagePluginAssets` task copies resources into
+  `:app/build/generated/plugin-assets/composeResources/{package}/…` and
+  registers the directory via AGP 9's Variant Sources API. CMP's default
+  Android reader then finds them via `context.assets.open(…)`.
+
+## Local testing flow
+
+Full instructions: `docs/plugin-system.md` §8 in the host repo. Summary:
+
+1. `./gradlew :plugin-sdk:publishToMavenLocal` (host repo).
+2. `./gradlew :plugin:buildPluginBundle` here. Record printed SHA-256.
+3. `cd plugin/build/outputs/plugin-bundle && python3 -m http.server 8080`.
+4. Point the Capture App at `http://10.0.2.2:8080/{id}-{version}.zip`:
+   - Real path — DHIS2 server dataStore (`dhis2AndroidPlugins/config`).
+   - Fast path — edit `FALLBACK_CONFIG_JSON` in the host repo's
+     `AppHubPluginRepository.kt`.
+5. Rebuild + install `dhis2Debug` variant of the Capture App; log in.
+
+For UI-only previews without the Capture App: `./gradlew :app:installDebug`.
 
 ## Entry-point contract
 
 `MyPlugin` must:
-- Live at the Kotlin FQCN declared in its own `PluginMetadata.entryPoint`.
-- Have a **public no-arg constructor** — the host instantiates via reflection.
+
 - Implement `org.dhis2.mobile.plugin.sdk.Dhis2Plugin`.
-- Not bundle `Dhis2Plugin` / `Dhis2PluginContext` / `PluginMetadata` /
-  `InjectionPoint` (they must be `compileOnly` as above).
+- Live at the Kotlin FQCN declared in its own `PluginMetadata.entryPoint`.
+- Have a public no-arg constructor — the host instantiates via reflection.
 
-`consumer-rules.pro` / `proguard-rules.pro` in `:plugin` keep the entry point
-class and its members from being renamed by R8 — edit those if you add
-reflectively-loaded classes.
+## Backlog
 
-## Versioning conventions
-
-- `org.dhis2.mobile:plugin-sdk:0.1.0-SNAPSHOT` — compile-only dep, served from
-  `mavenLocal()` while the SDK is pre-release. `settings.gradle.kts` already
-  declares `mavenLocal()` in both `pluginManagement` and
-  `dependencyResolutionManagement`.
-- `minSdk = 26` is required — `InMemoryDexClassLoader` needs API 26+.
-
-## Things to add next (backlog)
-
-- Extract `buildPluginDex` into a real Gradle plugin (`org.dhis2.mobile.plugin`).
-- Publish a `plugin-sdk-test` artefact so plugin authors don't have to
-  copy-paste `StubDhis2PluginContext`.
-- Wire the `pluginId` / `pluginVersion` Gradle vals to `MyPlugin.metadata`
-  via a generated constants class — today they're duplicated.
+- Extract `buildPluginBundle` into a published Gradle plugin.
+- Publish a `plugin-sdk-test` artefact so plugin authors don't copy-paste
+  `StubDhis2PluginContext`.
+- Unify the `pluginId`/`pluginVersion` Gradle vals with `MyPlugin.metadata`
+  via generated constants — they're duplicated today.
+- Add a `jvm("desktop")` target and a `desktop/plugin.jar` bundle subdir once
+  a Desktop host exists.
+- Per-publisher cert allow-list in the Capture App's `PluginVerifier`.
