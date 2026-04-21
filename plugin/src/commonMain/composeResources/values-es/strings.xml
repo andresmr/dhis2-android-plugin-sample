@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plugin_title">Programa Infantil</string>
+    <string name="plugin_loading">Cargando instancias de entidad rastreada…</string>
+    <string name="plugin_error_prefix">Error al leer TEIs:</string>
+    <string name="plugin_teis_count">%d instancia(s) de entidad rastreada disponibles sin conexión</string>
+    <string name="plugin_and_more">… y %d más</string>
+</resources>

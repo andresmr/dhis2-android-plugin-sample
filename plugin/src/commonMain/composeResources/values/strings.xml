@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plugin_title">Child Programme</string>
+    <string name="plugin_loading">Loading tracked entity instances…</string>
+    <string name="plugin_error_prefix">Failed to read TEIs:</string>
+    <string name="plugin_teis_count">%d tracked entity instance(s) available offline</string>
+    <string name="plugin_and_more">… and %d more</string>
+</resources>
