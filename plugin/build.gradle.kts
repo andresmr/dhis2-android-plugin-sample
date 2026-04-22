@@ -82,7 +82,7 @@ compose.resources {
 // ──────────────────────────────────────────────────────────────────────────────
 
 val pluginId = "org.dhis2.myplugin"
-val pluginVersion = "1.3.0"
+val pluginVersion = "1.4.0"
 val pluginEntryPoint = "org.dhis2.pluginimplementationtest.MyPlugin"
 
 fun resolveAndroidSdkDir(): String {

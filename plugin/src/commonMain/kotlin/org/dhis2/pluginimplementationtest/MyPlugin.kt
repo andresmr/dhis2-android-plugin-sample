@@ -44,7 +44,7 @@ private const val CHILD_PROGRAMME_UID = "IpHINAT79UW"
 class MyPlugin : Dhis2Plugin {
     override val metadata = PluginMetadata(
         id = "org.dhis2.myplugin",
-        version = "1.2.0",
+        version = "1.4.0",
         entryPoint = "org.dhis2.pluginimplementationtest.MyPlugin",
         allowedProgramUids = listOf(CHILD_PROGRAMME_UID),
         injectionPoints = listOf(InjectionPoint.HOME_ABOVE_PROGRAM_LIST),
