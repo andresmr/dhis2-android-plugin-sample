@@ -1,12 +1,15 @@
 [versions]
-agp = "9.1.0"
+agp = "9.3.1"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
-kotlin = "2.2.10"
+# Must match the Capture App host's `kotlin` version. The plugin DEX resolves the Kotlin stdlib
+# from the host's class loader at runtime, and plugin-sdk is published with the host's Kotlin
+# metadata version — an older compiler here cannot read it.
+kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
 pluginSdk = "0.1.1-SNAPSHOT"

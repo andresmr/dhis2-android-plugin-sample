@@ -26,8 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.dhis2.mobile.plugin.sdk.Dhis2Plugin
 import org.dhis2.mobile.plugin.sdk.Dhis2PluginContext
-import org.dhis2.mobile.plugin.sdk.InjectionPoint
-import org.dhis2.mobile.plugin.sdk.PluginMetadata
 import org.dhis2.mobile.plugin.sdk.dto.TrackedEntityInstanceDto
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.Res
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_and_more
@@ -42,14 +40,6 @@ import org.jetbrains.compose.resources.stringResource
 private const val CHILD_PROGRAMME_UID = "IpHINAT79UW"
 
 class MyPlugin : Dhis2Plugin {
-    override val metadata = PluginMetadata(
-        id = "org.dhis2.myplugin",
-        version = "1.4.0",
-        entryPoint = "org.dhis2.pluginimplementationtest.MyPlugin",
-        allowedProgramUids = listOf(CHILD_PROGRAMME_UID),
-        injectionPoints = listOf(InjectionPoint.HOME_ABOVE_PROGRAM_LIST),
-    )
-
     override fun provideKoinModule() = null
 
     @Composable

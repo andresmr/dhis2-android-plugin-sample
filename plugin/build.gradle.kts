@@ -18,7 +18,7 @@ plugins {
 kotlin {
     androidLibrary {
         namespace = "org.dhis2.pluginimplementationtest.plugin"
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 26
         compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
     }
@@ -69,21 +69,24 @@ compose.resources {
 //
 // Bundle layout:
 //
-//   {id}-{version}.zip
+//   {module}-{version}.zip
 //   ├── META-INF/…               (jarsigner)
-//   ├── plugin.json              (metadata: id, version, entryPoint, targets)
 //   └── android/
 //       ├── classes.dex
 //       └── composeResources/    (extracted from the release AAR)
+//
+// The bundle carries no manifest — the host reads id/version/entryPoint/scope from the DHIS2
+// server dataStore config, so the filename is only a convenience for whoever hosts the file.
 //
 // Future: add desktop/plugin.jar alongside android/; host picks by target.
 //
 // Signing: uses ~/.android/debug.keystore (standard Android debug key).
 // ──────────────────────────────────────────────────────────────────────────────
 
-val pluginId = "org.dhis2.myplugin"
-val pluginVersion = "1.4.0"
-val pluginEntryPoint = "org.dhis2.pluginimplementationtest.MyPlugin"
+// The only plugin-specific knob. Everything else about the plugin — its id, entry-point class,
+// injection points and data scope — lives in the DHIS2 server dataStore config, which is the
+// single source of truth. The plugin's Kotlin declares none of it.
+version = "1.5.0"
 
 fun resolveAndroidSdkDir(): String {
     System.getenv("ANDROID_HOME")?.let { return it }
@@ -128,9 +131,18 @@ tasks.register("buildPluginBundle") {
         ?.name
         ?: error("No build-tools installed under $sdkDir/build-tools. Install via SDK Manager.")
     val resourcePackageCaptured = resourcePackage
-    val pluginIdCaptured = pluginId
-    val pluginVersionCaptured = pluginVersion
-    val entryPointCaptured = pluginEntryPoint
+    val bundleName = "${project.name}-$version.zip"
+
+    inputs.file(aarFileProvider)
+        .withPropertyName("pluginAar")
+        .withPathSensitivity(PathSensitivity.NAME_ONLY)
+    inputs.files(preparedResourcesProvider)
+        .withPropertyName("preparedComposeResources")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .optional()
+    inputs.property("bundleName", bundleName)
+    inputs.property("resourcePackage", resourcePackageCaptured)
+    inputs.property("buildToolsVersion", buildToolsVersion)
 
     outputs.dir(outDirProvider)
 
@@ -187,20 +199,11 @@ tasks.register("buildPluginBundle") {
         check(dexProduced.exists()) { "d8 did not produce classes.dex in $dexStaging" }
         dexProduced.copyTo(File(androidDir, "classes.dex"), overwrite = true)
 
-        // 3. Write plugin.json (manifest).
-        val manifest = File(staging, "plugin.json")
-        manifest.writeText(
-            """
-            {
-              "id": "$pluginIdCaptured",
-              "version": "$pluginVersionCaptured",
-              "entryPoint": "$entryPointCaptured",
-              "targets": ["android"]
-            }
-            """.trimIndent(),
-        )
-
-        // 4. Zip staging → unsigned bundle.
+        // 3. Zip staging → unsigned bundle.
+        //
+        // No manifest is written: the host learns the plugin's id, version, entry point and data
+        // scope from the server dataStore config, never from the bundle. Adding a plugin.json here
+        // would just be a second copy of those facts, free to drift from the config that matters.
         val unsignedZip = File(staging, "unsigned.zip")
         ZipOutputStream(unsignedZip.outputStream()).use { zipOut ->
             fun addFile(file: File, entryName: String) {
@@ -208,14 +211,13 @@ tasks.register("buildPluginBundle") {
                 file.inputStream().use { it.copyTo(zipOut) }
                 zipOut.closeEntry()
             }
-            addFile(manifest, "plugin.json")
             androidDir.walkTopDown().filter { it.isFile }.forEach { f ->
                 val rel = "android/" + f.relativeTo(androidDir).invariantSeparatorsPath
                 addFile(f, rel)
             }
         }
 
-        // 5. Sign the zip with jarsigner (Android debug key).
+        // 4. Sign the zip with jarsigner (Android debug key).
         val keystore = File(System.getProperty("user.home"), ".android/debug.keystore")
         check(keystore.exists()) {
             "Debug keystore not found at $keystore. " +
@@ -225,7 +227,7 @@ tasks.register("buildPluginBundle") {
                 "-dname 'CN=Android Debug,O=Android,C=US' -keyalg RSA -keysize 2048 -validity 10000"
         }
         val jarsigner = resolveJdkTool("jarsigner")
-        val signedZip = File(target, "$pluginIdCaptured-$pluginVersionCaptured.zip")
+        val signedZip = File(target, bundleName)
         if (signedZip.exists()) signedZip.delete()
         unsignedZip.copyTo(signedZip, overwrite = true)
         val signProc = ProcessBuilder(
@@ -240,7 +242,7 @@ tasks.register("buildPluginBundle") {
         val signExit = signProc.waitFor()
         check(signExit == 0) { "jarsigner failed with exit $signExit:\n$signLog" }
 
-        // 6. Report.
+        // 5. Report.
         val hash = MessageDigest.getInstance("SHA-256")
             .digest(signedZip.readBytes())
             .joinToString("") { "%02x".format(it) }
