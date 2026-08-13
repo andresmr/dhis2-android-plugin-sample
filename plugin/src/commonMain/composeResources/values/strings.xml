@@ -3,6 +3,7 @@
     <string name="plugin_title">Child Programme</string>
     <string name="plugin_loading">Loading tracked entity instances…</string>
     <string name="plugin_error_prefix">Failed to read TEIs:</string>
-    <string name="plugin_teis_count">%d tracked entity instance(s) available offline</string>
-    <string name="plugin_and_more">… and %d more</string>
+    <!-- Compose Multiplatform substitutes positional %N$s placeholders only; bare %d is left as-is. -->
+    <string name="plugin_teis_count">%1$s tracked entity instance(s) available offline</string>
+    <string name="plugin_and_more">… and %1$s more</string>
 </resources>

@@ -63,10 +63,9 @@ val stagePluginAssets by tasks.registering(StagePluginAssets::class) {
 
 android {
     namespace = "org.dhis2.pluginimplementationtest"
+    // Must be >= the Capture App host's compileSdk, since plugin-sdk is compiled against it.
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
