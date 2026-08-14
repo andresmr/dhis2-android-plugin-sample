@@ -38,4 +38,6 @@ android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+# Bundle packaging, published from the Capture App repo at the same version as plugin-sdk.
+dhis2-pluginBundle = { id = "org.dhis2.mobile.plugin-bundle", version.ref = "pluginSdk" }
 
