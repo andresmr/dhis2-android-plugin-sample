@@ -82,13 +82,23 @@ Runtime resolution differs by host:
 
 Full instructions: `docs/plugin-system.md` §8 in the host repo. Summary:
 
-1. `./gradlew :plugin-sdk:publishToMavenLocal` (host repo).
-2. `./gradlew :plugin:buildPluginBundle` here. Record printed SHA-256.
-3. `cd plugin/build/outputs/plugin-bundle && python3 -m http.server 8080`.
-4. Point the Capture App at `http://10.0.2.2:8080/{id}-{version}.zip`:
-   - Real path — DHIS2 server dataStore (`dhis2AndroidPlugins/config`).
-   - Fast path — edit `FALLBACK_CONFIG_JSON` in the host repo's
-     `AppHubPluginRepository.kt`.
+1. `./gradlew :plugin-sdk:publishToMavenLocal :plugin-sdk-gradle:publishToMavenLocal`
+   (host repo). Both, always: the `id("org.dhis2.mobile.plugin-bundle")` line resolves
+   from Maven Local and is what pulls in the matching `plugin-sdk`. A stale
+   `plugin-sdk-gradle` there is invisible from this side and surfaces as an unrelated
+   dependency-resolution error in this project.
+2. `./gradlew :plugin:buildPluginBundle` here. `plugin-config.json` beside the bundle is
+   the dataStore entry with `version`, `checksum`, `id` and `entryPoint` already filled
+   in — the last two come from `pluginBundle { }` in `plugin/build.gradle.kts`.
+3. `cd plugin/build/outputs/plugin-bundle && python3 -m http.server 8081`.
+   Not 8080: a local DHIS2 instance usually owns it and answers with its login redirect
+   instead of the bundle, which reads on device as the plugin silently not loading.
+4. Post that JSON to the DHIS2 server dataStore (`dhis2AndroidPlugins/config`) — POST
+   creates the key, PUT updates it afterwards. It points the app at
+   `http://10.0.2.2:8081/plugin-{version}.zip` (the bundle is named from the Gradle
+   module, not from the config's `id`). The dataStore is the only source of plugin
+   config; there is no in-app fallback. `allowedProgramUids` has to include
+   `IpHINAT79UW` or `MyPlugin`'s card renders a scope-violation error instead of TEIs.
 5. Rebuild + install `dhis2Debug` variant of the Capture App; log in.
 
 For UI-only previews without the Capture App: `./gradlew :app:installDebug`.

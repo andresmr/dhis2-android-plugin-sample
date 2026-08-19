@@ -48,6 +48,15 @@ kotlin {
     }
 }
 
+// Fills in the two fields of the generated `plugin-config.json` that a build cannot work out for
+// itself, so the file is postable to the dataStore as it is instead of needing the same two edits
+// after every build. The bundle carries neither value — the server dataStore stays the single
+// source of truth for this plugin's identity, and the host reads both from there.
+pluginBundle {
+    pluginId = "org.dhis2.pluginimplementationtest"
+    entryPoint = "org.dhis2.pluginimplementationtest.MyPlugin"
+}
+
 compose.resources {
     // Override default (which derives from the root project name — gives an ugly
     // backtick-escaped package when the project name contains spaces).
