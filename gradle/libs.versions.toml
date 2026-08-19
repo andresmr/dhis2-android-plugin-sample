@@ -12,7 +12,7 @@ activityCompose = "1.13.0"
 kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
-pluginSdk = "0.1.1-SNAPSHOT"
+pluginSdk = "0.1.2-SNAPSHOT"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
