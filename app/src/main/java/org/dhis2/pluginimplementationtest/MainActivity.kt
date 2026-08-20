@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import org.dhis2.pluginimplementationtest.ui.theme.PluginImplementationTestTheme
 
-private const val PLUGIN_VERSION = "2.2.0"
+private const val PLUGIN_VERSION = "2.2.1"
 
 /**
  * Sample data for the harness.

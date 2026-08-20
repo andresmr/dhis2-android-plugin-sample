@@ -294,10 +294,12 @@ private fun SearchTest(
         )
 
         is SearchState.Done -> {
-            WriteResultText(
-                text = stringResource(Res.string.plugin_search_baseline, searchState.baseline.toString()),
-                color = Color(0xFF555555),
-            )
+            searchState.baseline?.let { baseline ->
+                WriteResultText(
+                    text = stringResource(Res.string.plugin_search_baseline, baseline.toString()),
+                    color = Color(0xFF555555),
+                )
+            }
             searchState.probes.forEach { probe ->
                 ProbeRow(probe = probe, baseline = searchState.baseline)
             }
@@ -306,12 +308,14 @@ private fun SearchTest(
 }
 
 @Composable
-private fun ProbeRow(probe: SearchProbe, baseline: Int) {
+private fun ProbeRow(probe: SearchProbe, baseline: Int?) {
     val verdict = probe.verdict(baseline)
+    val outcome = probe.count
+        ?.let { stringResource(Res.string.plugin_search_results, it.toString()) }
+        ?: probe.error.orEmpty()
     Spacer(modifier = Modifier.height(4.dp))
     Text(
-        text = "  ${verdict.symbol()} ${probe.label} — " +
-            stringResource(Res.string.plugin_search_results, probe.count.toString()),
+        text = "  ${verdict.symbol()} ${probe.label} — $outcome",
         style = MaterialTheme.typography.bodySmall,
         color = verdict.color(),
     )
@@ -326,6 +330,7 @@ private fun Verdict.symbol(): String = when (this) {
     Verdict.INFO -> "•"
     Verdict.PASS -> "✓"
     Verdict.FAIL -> "✗"
+    Verdict.ERROR -> "!"
 }
 
 private fun Verdict.color(): Color = when (this) {
@@ -333,6 +338,8 @@ private fun Verdict.color(): Color = when (this) {
     Verdict.PASS -> Color(0xFF1B5E20)
     // A FAIL here means a widening attempt got through, which is the one outcome that is a real bug.
     Verdict.FAIL -> Color(0xFFB00020)
+    // The probe itself broke, which says nothing about the grant either way.
+    Verdict.ERROR -> Color(0xFF8D6E00)
 }
 
 /** How many entries [ProgramSummaryCard] lists before collapsing the rest into "and N more". */

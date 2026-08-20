@@ -18,8 +18,17 @@ data class SearchProbe(
     val label: String,
     /** The SDK mechanism this probe is aimed at, so a failure points somewhere. */
     val mechanism: String,
-    val count: Int,
+    /** The result count, or null when this probe threw — see [error]. */
+    val count: Int?,
     val expectation: Expectation,
+    /**
+     * Why this probe produced no count.
+     *
+     * Held per probe rather than per run. A single `try` around the whole run meant the first probe
+     * to throw discarded every other result, which is precisely how an SDK bug that made *all*
+     * scoped searches throw looked identical to "search is not granted".
+     */
+    val error: String? = null,
 ) {
     enum class Expectation {
         /** Reported, not asserted — there is no independent number to compare against. */
@@ -33,7 +42,7 @@ data class SearchProbe(
     }
 }
 
-enum class Verdict { INFO, PASS, FAIL }
+enum class Verdict { INFO, PASS, FAIL, ERROR }
 
 /**
  * Scores a probe against [baseline], the count from an ordinary in-scope search.
@@ -42,10 +51,16 @@ enum class Verdict { INFO, PASS, FAIL }
  * across databases: the interesting claim is never "N results" but "asking for more did not get
  * more".
  */
-fun SearchProbe.verdict(baseline: Int): Verdict = when (expectation) {
-    SearchProbe.Expectation.INFORMATIONAL -> Verdict.INFO
-    SearchProbe.Expectation.EMPTY -> if (count == 0) Verdict.PASS else Verdict.FAIL
-    SearchProbe.Expectation.SAME_AS_BASELINE -> if (count == baseline) Verdict.PASS else Verdict.FAIL
+fun SearchProbe.verdict(baseline: Int?): Verdict = when {
+    // A probe that threw is neither a pass nor a widening — it is a broken probe, and saying so is
+    // more useful than folding it into FAIL.
+    error != null -> Verdict.ERROR
+    count == null -> Verdict.ERROR
+    expectation == SearchProbe.Expectation.INFORMATIONAL -> Verdict.INFO
+    expectation == SearchProbe.Expectation.EMPTY -> if (count == 0) Verdict.PASS else Verdict.FAIL
+    // Nothing to compare against if the baseline itself failed.
+    baseline == null -> Verdict.ERROR
+    else -> if (count == baseline) Verdict.PASS else Verdict.FAIL
 }
 
 /** State of the search probe run. */
@@ -54,7 +69,8 @@ sealed interface SearchState {
 
     data object Running : SearchState
 
-    data class Done(val baseline: Int, val probes: List<SearchProbe>) : SearchState
+    /** [baseline] is null when the baseline probe itself failed, which makes the rest unscoreable. */
+    data class Done(val baseline: Int?, val probes: List<SearchProbe>) : SearchState
 
     /**
      * The probes could not run at all — normally because `SEARCH_TRACKED_ENTITY` was not granted,

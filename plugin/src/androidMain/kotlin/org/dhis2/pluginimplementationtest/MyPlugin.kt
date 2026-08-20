@@ -228,7 +228,7 @@ private fun addEvent(sdk: ScopedD2, target: WriteTarget): WriteState =
     }
 
 /**
- * Runs the tracker-search probes.
+ * Runs the tracker-search probes, each isolated from the others.
  *
  * Each probe deliberately asks for more than the grant allows, because tracker search is the one
  * accessor where asking is not obviously futile: its scope fields are single-valued and `by*()`
@@ -237,59 +237,79 @@ private fun addEvent(sdk: ScopedD2, target: WriteTarget): WriteState =
  *
  * Compared against a baseline rather than absolute numbers, so the probes mean the same thing on any
  * database: the claim under test is "asking for more did not return more", not "N results".
+ *
+ * Every probe is caught individually. Wrapping the whole run in one `try` meant the first throw
+ * discarded all five results, which made an SDK bug that broke *every* scoped search look exactly
+ * like a missing `SEARCH_TRACKED_ENTITY` capability.
  */
-private fun probeSearch(sdk: ScopedD2): SearchState =
-    try {
-        val baseline = sdk.trackedEntitySearch()
-            .byProgram().eq(CHILD_PROGRAMME_UID)
-            .blockingCount()
-
-        SearchState.Done(
-            baseline = baseline,
-            probes = listOf(
-                SearchProbe(
-                    label = "Granted program",
-                    mechanism = "ordinary in-scope search — the number the rest compare against",
-                    count = baseline,
-                    expectation = SearchProbe.Expectation.INFORMATIONAL,
-                ),
-                SearchProbe(
-                    label = "Ungranted program",
-                    mechanism = "applyGrant() rewrites an ungranted program to __scope_denied__",
-                    count = sdk.trackedEntitySearch()
-                        .byProgram().eq(UNGRANTED_PROGRAMME_UID)
-                        .blockingCount(),
-                    expectation = SearchProbe.Expectation.EMPTY,
-                ),
-                SearchProbe(
-                    label = "No program filter",
-                    mechanism = "appendGrantWhere() bounds an unfiltered search by a sub-select on granted programs",
-                    count = sdk.trackedEntitySearch().blockingCount(),
-                    expectation = SearchProbe.Expectation.INFORMATIONAL,
-                ),
-                SearchProbe(
-                    label = "orgUnitMode = ACCESSIBLE",
-                    mechanism = "grant forces SELECTED over its own pre-expanded unit set",
-                    count = sdk.trackedEntitySearch()
-                        .byProgram().eq(CHILD_PROGRAMME_UID)
-                        .byOrgUnitMode().eq(OrganisationUnitMode.ACCESSIBLE)
-                        .blockingCount(),
-                    expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
-                ),
-                SearchProbe(
-                    label = "onlineOnly()",
-                    mechanism = "grant forces OFFLINE_ONLY — a server search answers where no filter applies",
-                    count = sdk.trackedEntitySearch()
-                        .byProgram().eq(CHILD_PROGRAMME_UID)
-                        .onlineOnly()
-                        .blockingCount(),
-                    expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
-                ),
-            ),
-        )
-    } catch (error: D2Error) {
-        SearchState.Unavailable(error.describe())
+private fun probeSearch(sdk: ScopedD2): SearchState {
+    // The accessor itself is the one thing that must work before anything else can be attempted;
+    // failing here really does mean the capability was withheld.
+    runCatching { sdk.trackedEntitySearch() }.onFailure { error ->
+        return SearchState.Unavailable(error.describe())
     }
+
+    val baseline = probe(
+        label = "Granted program",
+        mechanism = "ordinary in-scope search — the number the rest compare against",
+        expectation = SearchProbe.Expectation.INFORMATIONAL,
+    ) {
+        sdk.trackedEntitySearch().byProgram().eq(CHILD_PROGRAMME_UID).blockingCount()
+    }
+
+    return SearchState.Done(
+        baseline = baseline.count,
+        probes = listOf(
+            baseline,
+            probe(
+                label = "Ungranted program",
+                mechanism = "applyGrant() rewrites an ungranted program to __scope_denied__",
+                expectation = SearchProbe.Expectation.EMPTY,
+            ) {
+                sdk.trackedEntitySearch().byProgram().eq(UNGRANTED_PROGRAMME_UID).blockingCount()
+            },
+            probe(
+                label = "No program filter",
+                mechanism = "appendGrantWhere() bounds an unfiltered search by a sub-select on granted programs",
+                expectation = SearchProbe.Expectation.INFORMATIONAL,
+            ) {
+                sdk.trackedEntitySearch().blockingCount()
+            },
+            probe(
+                label = "orgUnitMode = ACCESSIBLE",
+                mechanism = "grant forces SELECTED over its own pre-expanded unit set",
+                expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
+            ) {
+                sdk.trackedEntitySearch()
+                    .byProgram().eq(CHILD_PROGRAMME_UID)
+                    .byOrgUnitMode().eq(OrganisationUnitMode.ACCESSIBLE)
+                    .blockingCount()
+            },
+            probe(
+                label = "onlineOnly()",
+                mechanism = "grant forces OFFLINE_ONLY — a server search answers where no filter applies",
+                expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
+            ) {
+                sdk.trackedEntitySearch()
+                    .byProgram().eq(CHILD_PROGRAMME_UID)
+                    .onlineOnly()
+                    .blockingCount()
+            },
+        ),
+    )
+}
+
+/** Runs one probe, turning a throw into a reported error rather than an abandoned run. */
+private fun probe(
+    label: String,
+    mechanism: String,
+    expectation: SearchProbe.Expectation,
+    query: () -> Int,
+): SearchProbe =
+    runCatching(query).fold(
+        onSuccess = { SearchProbe(label, mechanism, it, expectation) },
+        onFailure = { SearchProbe(label, mechanism, null, expectation, it.describe()) },
+    )
 
 /** Attribute UID to the label a person should see, so values are not rendered under raw UIDs. */
 private fun attributeLabels(sdk: ScopedD2): Map<String, String> =
