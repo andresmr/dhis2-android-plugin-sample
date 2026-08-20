@@ -15,6 +15,31 @@ data class ProgramSummary(
     /** Enrolled tracked entities counted in SQL, not by materialising the list. */
     val enrolledCount: Int,
     val recent: List<EnrolledPerson>,
+    /**
+     * Events visible in this program, or null when `READ_EVENT` was not granted.
+     *
+     * Null rather than zero on purpose: "the grant does not let me look" and "I looked and found
+     * none" are different answers, and conflating them is exactly the mistake the scoping model is
+     * meant to make visible.
+     */
+    val eventCount: Int? = null,
+    /** What the write button would write, or null when nothing writable could be resolved. */
+    val writeTarget: WriteTarget? = null,
+)
+
+/**
+ * The event the write test would create.
+ *
+ * Resolved from readable data, but every field here is one the write guard checks against the
+ * *writable* grant — so a target existing does not imply the write will be permitted. That gap is
+ * the point of the test: [ScopedAccessGuard][org.hisp.dhis.android.core.scopedaccess] validates the
+ * object, not the query that found it.
+ */
+data class WriteTarget(
+    val enrollmentUid: String,
+    val programStageUid: String,
+    /** The enrollment's own org unit — the value the guard checks, not one the plugin chose. */
+    val orgUnitUid: String,
 )
 
 /** One tracked entity, with its attributes already resolved to human-readable labels. */
@@ -33,6 +58,25 @@ data class LabelledValue(
     val label: String,
     val value: String,
 )
+
+/**
+ * Outcome of the write test, kept separate from [SummaryState] so a refused write leaves the
+ * summary on screen instead of replacing it with an error.
+ */
+sealed interface WriteState {
+    data object Idle : WriteState
+
+    data object Writing : WriteState
+
+    /** The SDK permitted the write and the store returned this event UID. */
+    data class Succeeded(val eventUid: String) : WriteState
+
+    /** `D2ErrorCode.SCOPE_VIOLATION` — the write guard vetoed the object. */
+    data class Refused(val message: String) : WriteState
+
+    /** Anything else: a malformed target, a missing stage, a store failure. */
+    data class Failed(val message: String) : WriteState
+}
 
 /** Loading state for [ProgramSummaryCard]. */
 sealed interface SummaryState {

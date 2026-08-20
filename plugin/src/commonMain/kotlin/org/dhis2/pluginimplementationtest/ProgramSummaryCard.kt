@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -26,8 +28,16 @@ import org.dhis2.pluginimplementationtest.plugin.generated.resources.Res
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_and_more
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_enrolled_count
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_error_prefix
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_event_count
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_event_count_denied
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_icon
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_loading
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_button
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_failed
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_no_target
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_ok
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_refused
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_writing
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -44,6 +54,8 @@ fun ProgramSummaryCard(
     state: SummaryState,
     pluginVersion: String,
     modifier: Modifier = Modifier,
+    writeState: WriteState = WriteState.Idle,
+    onAddEvent: (WriteTarget) -> Unit = {},
 ) {
     Card(
         modifier = modifier
@@ -59,6 +71,14 @@ fun ProgramSummaryCard(
             Header(state)
             Spacer(modifier = Modifier.height(8.dp))
             Body(state)
+            if (state is SummaryState.Loaded) {
+                Spacer(modifier = Modifier.height(12.dp))
+                WriteTest(
+                    target = state.summary.writeTarget,
+                    writeState = writeState,
+                    onAddEvent = onAddEvent,
+                )
+            }
         }
     }
 }
@@ -142,6 +162,16 @@ private fun LoadedBody(summary: ProgramSummary) {
         )
     }
 
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        // Null means READ_EVENT was withheld, which has to read differently from a count of zero.
+        text = summary.eventCount
+            ?.let { stringResource(Res.string.plugin_event_count, it.toString()) }
+            ?: stringResource(Res.string.plugin_event_count_denied),
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (summary.eventCount == null) Color(0xFF8D6E00) else Color(0xFF555555),
+    )
+
     val remaining = summary.enrolledCount - summary.recent.size
     if (remaining > 0) {
         Spacer(modifier = Modifier.height(2.dp))
@@ -151,6 +181,74 @@ private fun LoadedBody(summary: ProgramSummary) {
             color = Color(0xFF888888),
         )
     }
+}
+
+/**
+ * The write half of the scoping test.
+ *
+ * Reads are enforced by filters, so an out-of-scope read is silently empty; writes are enforced by a
+ * guard, so an out-of-scope write is a loud `SCOPE_VIOLATION`. Those are two different mechanisms and
+ * only this button exercises the second one. The target is resolved from readable data, but the guard
+ * checks it against the *writable* grant — so the button being enabled says nothing about whether the
+ * write will be allowed.
+ */
+@Composable
+private fun WriteTest(
+    target: WriteTarget?,
+    writeState: WriteState,
+    onAddEvent: (WriteTarget) -> Unit,
+) {
+    if (target == null) {
+        Text(
+            text = stringResource(Res.string.plugin_write_no_target),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF8D6E00),
+        )
+        return
+    }
+
+    Button(
+        onClick = { onAddEvent(target) },
+        enabled = writeState !is WriteState.Writing,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+    ) {
+        Text(text = stringResource(Res.string.plugin_write_button))
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = "  → stage ${target.programStageUid} @ ${target.orgUnitUid}",
+        style = MaterialTheme.typography.bodySmall,
+        color = Color(0xFF888888),
+    )
+
+    when (writeState) {
+        is WriteState.Idle -> Unit
+
+        is WriteState.Writing -> WriteResultText(stringResource(Res.string.plugin_writing), Color(0xFF555555))
+
+        is WriteState.Succeeded -> WriteResultText(
+            text = stringResource(Res.string.plugin_write_ok, writeState.eventUid),
+            color = Color(0xFF1B5E20),
+        )
+
+        // Amber, not red: a refusal is the scope working, not the plugin breaking.
+        is WriteState.Refused -> WriteResultText(
+            text = "${stringResource(Res.string.plugin_write_refused)} ${writeState.message}",
+            color = Color(0xFF8D6E00),
+        )
+
+        is WriteState.Failed -> WriteResultText(
+            text = "${stringResource(Res.string.plugin_write_failed)} ${writeState.message}",
+            color = Color(0xFFB00020),
+        )
+    }
+}
+
+@Composable
+private fun WriteResultText(text: String, color: Color) {
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(text = text, style = MaterialTheme.typography.bodySmall, color = color)
 }
 
 /** How many entries [ProgramSummaryCard] lists before collapsing the rest into "and N more". */

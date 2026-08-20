@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import org.dhis2.pluginimplementationtest.ui.theme.PluginImplementationTestTheme
 
-private const val PLUGIN_VERSION = "2.0.0"
+private const val PLUGIN_VERSION = "2.1.1"
 
 /**
  * Sample data for the harness.
@@ -53,6 +53,12 @@ private val SAMPLE = ProgramSummary(
                 LabelledValue("Last name", "Santos"),
             ),
         ),
+    ),
+    eventCount = 41,
+    writeTarget = WriteTarget(
+        enrollmentUid = "TFEQXHXBiFO",
+        programStageUid = "A03MvHHogjR",
+        orgUnitUid = "DiszpKrYNg8",
     ),
 )
 
@@ -101,6 +107,47 @@ fun ProgramSummaryLoadedPreview() {
 fun ProgramSummaryLoadingPreview() {
     PluginImplementationTestTheme {
         ProgramSummaryCard(state = SummaryState.Loading, pluginVersion = PLUGIN_VERSION)
+    }
+}
+
+@Preview(showBackground = true, name = "Write refused")
+@Composable
+fun ProgramSummaryWriteRefusedPreview() {
+    // The interesting half of the scoping model: reads succeeded, so the summary is intact, and the
+    // write was vetoed on its own terms. Amber rather than red — the guard doing its job is not a bug.
+    PluginImplementationTestTheme {
+        ProgramSummaryCard(
+            state = SummaryState.Loaded(SAMPLE),
+            pluginVersion = PLUGIN_VERSION,
+            writeState = WriteState.Refused(
+                "Write refused: this D2DataScope does not permit writing event null in program 'IpHINAT79UW'",
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Write permitted")
+@Composable
+fun ProgramSummaryWriteOkPreview() {
+    PluginImplementationTestTheme {
+        ProgramSummaryCard(
+            state = SummaryState.Loaded(SAMPLE),
+            pluginVersion = PLUGIN_VERSION,
+            writeState = WriteState.Succeeded("Xk9pQ2mLvRt"),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Read-only grant")
+@Composable
+fun ProgramSummaryReadOnlyPreview() {
+    // What a grant without READ_EVENT / READ_ENROLLMENT looks like: the summary still renders, the
+    // event count reads "not readable" rather than "0", and there is no write target at all.
+    PluginImplementationTestTheme {
+        ProgramSummaryCard(
+            state = SummaryState.Loaded(SAMPLE.copy(eventCount = null, writeTarget = null)),
+            pluginVersion = PLUGIN_VERSION,
+        )
     }
 }
 

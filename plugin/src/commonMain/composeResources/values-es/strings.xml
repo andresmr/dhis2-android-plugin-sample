@@ -4,4 +4,12 @@
     <string name="plugin_error_prefix">Error al leer TEIs:</string>
     <string name="plugin_enrolled_count">%1$s instancia(s) de entidad rastreada inscritas, disponibles sin conexión</string>
     <string name="plugin_and_more">… y %1$s más</string>
+    <string name="plugin_event_count">%1$s evento(s) visibles en este programa</string>
+    <string name="plugin_event_count_denied">Eventos no legibles (READ_EVENT no concedido)</string>
+    <string name="plugin_write_button">Prueba de escritura: añadir un evento</string>
+    <string name="plugin_write_no_target">Sin destino escribible: requiere READ_ENROLLMENT y una inscripción existente</string>
+    <string name="plugin_writing">Escribiendo…</string>
+    <string name="plugin_write_ok">Escritura permitida — evento %1$s creado</string>
+    <string name="plugin_write_refused">Escritura rechazada:</string>
+    <string name="plugin_write_failed">Error de escritura:</string>
 </resources>

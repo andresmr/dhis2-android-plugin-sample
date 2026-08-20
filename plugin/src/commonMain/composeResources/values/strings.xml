@@ -5,4 +5,12 @@
     <!-- Compose Multiplatform substitutes positional %N$s placeholders only; bare %d is left as-is. -->
     <string name="plugin_enrolled_count">%1$s tracked entity instance(s) enrolled, available offline</string>
     <string name="plugin_and_more">… and %1$s more</string>
+    <string name="plugin_event_count">%1$s event(s) visible in this program</string>
+    <string name="plugin_event_count_denied">Events not readable (READ_EVENT not granted)</string>
+    <string name="plugin_write_button">Write test: add an event</string>
+    <string name="plugin_write_no_target">No writable target: needs READ_ENROLLMENT and an existing enrollment</string>
+    <string name="plugin_writing">Writing…</string>
+    <string name="plugin_write_ok">Write permitted — created event %1$s</string>
+    <string name="plugin_write_refused">Write refused:</string>
+    <string name="plugin_write_failed">Write failed:</string>
 </resources>
