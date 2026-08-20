@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import org.dhis2.pluginimplementationtest.ui.theme.PluginImplementationTestTheme
 
-private const val PLUGIN_VERSION = "2.1.1"
+private const val PLUGIN_VERSION = "2.2.0"
 
 /**
  * Sample data for the harness.
@@ -147,6 +147,62 @@ fun ProgramSummaryReadOnlyPreview() {
         ProgramSummaryCard(
             state = SummaryState.Loaded(SAMPLE.copy(eventCount = null, writeTarget = null)),
             pluginVersion = PLUGIN_VERSION,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Search probes")
+@Composable
+fun ProgramSummarySearchProbesPreview() {
+    // The shape a healthy run has: the widening attempts come back equal to the baseline, and the
+    // ungranted program comes back empty. A red ✗ here would mean a probe got past the grant.
+    PluginImplementationTestTheme {
+        ProgramSummaryCard(
+            state = SummaryState.Loaded(SAMPLE),
+            pluginVersion = PLUGIN_VERSION,
+            searchState = SearchState.Done(
+                baseline = 27,
+                probes = listOf(
+                    SearchProbe(
+                        label = "Granted program",
+                        mechanism = "ordinary in-scope search",
+                        count = 27,
+                        expectation = SearchProbe.Expectation.INFORMATIONAL,
+                    ),
+                    SearchProbe(
+                        label = "Ungranted program",
+                        mechanism = "applyGrant() rewrites an ungranted program to __scope_denied__",
+                        count = 0,
+                        expectation = SearchProbe.Expectation.EMPTY,
+                    ),
+                    SearchProbe(
+                        label = "orgUnitMode = ACCESSIBLE",
+                        mechanism = "grant forces SELECTED over its own pre-expanded unit set",
+                        count = 27,
+                        expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
+                    ),
+                    SearchProbe(
+                        label = "onlineOnly()",
+                        mechanism = "grant forces OFFLINE_ONLY",
+                        count = 27,
+                        expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
+                    ),
+                ),
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Search not granted")
+@Composable
+fun ProgramSummarySearchUnavailablePreview() {
+    PluginImplementationTestTheme {
+        ProgramSummaryCard(
+            state = SummaryState.Loaded(SAMPLE),
+            pluginVersion = PLUGIN_VERSION,
+            searchState = SearchState.Unavailable(
+                "[SCOPE_VIOLATION] This D2DataScope does not grant the SEARCH_TRACKED_ENTITY capability",
+            ),
         )
     }
 }

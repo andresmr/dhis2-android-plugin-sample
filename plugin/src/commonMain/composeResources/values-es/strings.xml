@@ -12,4 +12,9 @@
     <string name="plugin_write_ok">Escritura permitida — evento %1$s creado</string>
     <string name="plugin_write_refused">Escritura rechazada:</string>
     <string name="plugin_write_failed">Error de escritura:</string>
+    <string name="plugin_search_button">Prueba de alcance: sondear la búsqueda</string>
+    <string name="plugin_searching">Sondeando la búsqueda…</string>
+    <string name="plugin_search_baseline">Base: %1$s resultado(s) para el programa concedido</string>
+    <string name="plugin_search_unavailable">Búsqueda no disponible:</string>
+    <string name="plugin_search_results">%1$s resultado(s)</string>
 </resources>

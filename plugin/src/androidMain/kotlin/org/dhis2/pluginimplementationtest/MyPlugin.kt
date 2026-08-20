@@ -17,10 +17,19 @@ import org.hisp.dhis.android.core.arch.repositories.scope.RepositoryScope
 import org.hisp.dhis.android.core.event.EventCreateProjection
 import org.hisp.dhis.android.core.maintenance.D2Error
 import org.hisp.dhis.android.core.maintenance.D2ErrorCode
+import org.hisp.dhis.android.core.organisationunit.OrganisationUnitMode
 import org.hisp.dhis.android.core.scopedaccess.ScopedD2
 import org.hisp.dhis.android.core.trackedentity.TrackedEntityInstance
 
 private const val CHILD_PROGRAMME_UID = "IpHINAT79UW"
+
+/**
+ * A program the grant is not expected to include, used only as a probe target.
+ *
+ * Hardcoded rather than discovered: the point is to ask for something outside the grant, and
+ * anything the plugin can *see* is by definition inside it.
+ */
+private const val UNGRANTED_PROGRAMME_UID = "ur1Edk5Oe2n"
 
 /**
  * A plugin that summarises one program and offers one write, using the scoped DHIS2 SDK.
@@ -55,6 +64,7 @@ class MyPlugin : Dhis2Plugin {
         // actually landed in the database rather than merely passing the guard.
         var reloads by remember { mutableIntStateOf(0) }
         var writeState by remember { mutableStateOf<WriteState>(WriteState.Idle) }
+        var searchState by remember { mutableStateOf<SearchState>(SearchState.Idle) }
         val coroutineScope = rememberCoroutineScope()
 
         val state by produceState<SummaryState>(SummaryState.Loading, context, reloads) {
@@ -77,6 +87,13 @@ class MyPlugin : Dhis2Plugin {
                     val outcome = withContext(Dispatchers.IO) { addEvent(context.sdk, target) }
                     writeState = outcome
                     if (outcome is WriteState.Succeeded) reloads++
+                }
+            },
+            searchState = searchState,
+            onProbeSearch = {
+                coroutineScope.launch {
+                    searchState = SearchState.Running
+                    searchState = withContext(Dispatchers.IO) { probeSearch(context.sdk) }
                 }
             },
         )
@@ -208,6 +225,70 @@ private fun addEvent(sdk: ScopedD2, target: WriteTarget): WriteState =
         } else {
             WriteState.Failed("${error.errorCode()}: ${error.errorDescription()}")
         }
+    }
+
+/**
+ * Runs the tracker-search probes.
+ *
+ * Each probe deliberately asks for more than the grant allows, because tracker search is the one
+ * accessor where asking is not obviously futile: its scope fields are single-valued and `by*()`
+ * *replaces* them instead of appending, so overwriting `program` or `orgUnitMode` would widen the
+ * query if the SDK did not re-apply the grant on every repository the fluent API produces.
+ *
+ * Compared against a baseline rather than absolute numbers, so the probes mean the same thing on any
+ * database: the claim under test is "asking for more did not return more", not "N results".
+ */
+private fun probeSearch(sdk: ScopedD2): SearchState =
+    try {
+        val baseline = sdk.trackedEntitySearch()
+            .byProgram().eq(CHILD_PROGRAMME_UID)
+            .blockingCount()
+
+        SearchState.Done(
+            baseline = baseline,
+            probes = listOf(
+                SearchProbe(
+                    label = "Granted program",
+                    mechanism = "ordinary in-scope search — the number the rest compare against",
+                    count = baseline,
+                    expectation = SearchProbe.Expectation.INFORMATIONAL,
+                ),
+                SearchProbe(
+                    label = "Ungranted program",
+                    mechanism = "applyGrant() rewrites an ungranted program to __scope_denied__",
+                    count = sdk.trackedEntitySearch()
+                        .byProgram().eq(UNGRANTED_PROGRAMME_UID)
+                        .blockingCount(),
+                    expectation = SearchProbe.Expectation.EMPTY,
+                ),
+                SearchProbe(
+                    label = "No program filter",
+                    mechanism = "appendGrantWhere() bounds an unfiltered search by a sub-select on granted programs",
+                    count = sdk.trackedEntitySearch().blockingCount(),
+                    expectation = SearchProbe.Expectation.INFORMATIONAL,
+                ),
+                SearchProbe(
+                    label = "orgUnitMode = ACCESSIBLE",
+                    mechanism = "grant forces SELECTED over its own pre-expanded unit set",
+                    count = sdk.trackedEntitySearch()
+                        .byProgram().eq(CHILD_PROGRAMME_UID)
+                        .byOrgUnitMode().eq(OrganisationUnitMode.ACCESSIBLE)
+                        .blockingCount(),
+                    expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
+                ),
+                SearchProbe(
+                    label = "onlineOnly()",
+                    mechanism = "grant forces OFFLINE_ONLY — a server search answers where no filter applies",
+                    count = sdk.trackedEntitySearch()
+                        .byProgram().eq(CHILD_PROGRAMME_UID)
+                        .onlineOnly()
+                        .blockingCount(),
+                    expectation = SearchProbe.Expectation.SAME_AS_BASELINE,
+                ),
+            ),
+        )
+    } catch (error: D2Error) {
+        SearchState.Unavailable(error.describe())
     }
 
 /** Attribute UID to the label a person should see, so values are not rendered under raw UIDs. */

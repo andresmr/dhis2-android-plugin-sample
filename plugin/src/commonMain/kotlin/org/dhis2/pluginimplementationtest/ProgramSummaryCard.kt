@@ -32,6 +32,11 @@ import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_even
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_event_count_denied
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_icon
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_loading
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_search_baseline
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_search_button
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_search_results
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_search_unavailable
+import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_searching
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_button
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_failed
 import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_write_no_target
@@ -56,6 +61,8 @@ fun ProgramSummaryCard(
     modifier: Modifier = Modifier,
     writeState: WriteState = WriteState.Idle,
     onAddEvent: (WriteTarget) -> Unit = {},
+    searchState: SearchState = SearchState.Idle,
+    onProbeSearch: () -> Unit = {},
 ) {
     Card(
         modifier = modifier
@@ -78,6 +85,8 @@ fun ProgramSummaryCard(
                     writeState = writeState,
                     onAddEvent = onAddEvent,
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                SearchTest(searchState = searchState, onProbeSearch = onProbeSearch)
             }
         }
     }
@@ -249,6 +258,81 @@ private fun WriteTest(
 private fun WriteResultText(text: String, color: Color) {
     Spacer(modifier = Modifier.height(4.dp))
     Text(text = text, style = MaterialTheme.typography.bodySmall, color = color)
+}
+
+/**
+ * The search half of the scoping test.
+ *
+ * Separate from [WriteTest] because it targets a third mechanism. Reads are bounded by append-only
+ * filters and writes by a guard on the object; tracker search is bounded by neither, because its
+ * scope fields are *replaced* by `by*()` rather than accumulated. The grant is re-applied on every
+ * repository the fluent API builds, and these probes are what confirm that — each one asks for more
+ * than the grant allows and should come back with no more than the baseline.
+ */
+@Composable
+private fun SearchTest(
+    searchState: SearchState,
+    onProbeSearch: () -> Unit,
+) {
+    Button(
+        onClick = onProbeSearch,
+        enabled = searchState !is SearchState.Running,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+    ) {
+        Text(text = stringResource(Res.string.plugin_search_button))
+    }
+
+    when (searchState) {
+        is SearchState.Idle -> Unit
+
+        is SearchState.Running -> WriteResultText(stringResource(Res.string.plugin_searching), Color(0xFF555555))
+
+        is SearchState.Unavailable -> WriteResultText(
+            // Not red: a missing SEARCH_TRACKED_ENTITY capability is a result, not a malfunction.
+            text = "${stringResource(Res.string.plugin_search_unavailable)} ${searchState.message}",
+            color = Color(0xFF8D6E00),
+        )
+
+        is SearchState.Done -> {
+            WriteResultText(
+                text = stringResource(Res.string.plugin_search_baseline, searchState.baseline.toString()),
+                color = Color(0xFF555555),
+            )
+            searchState.probes.forEach { probe ->
+                ProbeRow(probe = probe, baseline = searchState.baseline)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProbeRow(probe: SearchProbe, baseline: Int) {
+    val verdict = probe.verdict(baseline)
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = "  ${verdict.symbol()} ${probe.label} — " +
+            stringResource(Res.string.plugin_search_results, probe.count.toString()),
+        style = MaterialTheme.typography.bodySmall,
+        color = verdict.color(),
+    )
+    Text(
+        text = "      ${probe.mechanism}",
+        style = MaterialTheme.typography.labelSmall,
+        color = Color(0xFF888888),
+    )
+}
+
+private fun Verdict.symbol(): String = when (this) {
+    Verdict.INFO -> "•"
+    Verdict.PASS -> "✓"
+    Verdict.FAIL -> "✗"
+}
+
+private fun Verdict.color(): Color = when (this) {
+    Verdict.INFO -> Color(0xFF555555)
+    Verdict.PASS -> Color(0xFF1B5E20)
+    // A FAIL here means a widening attempt got through, which is the one outcome that is a real bug.
+    Verdict.FAIL -> Color(0xFFB00020)
 }
 
 /** How many entries [ProgramSummaryCard] lists before collapsing the rest into "and N more". */

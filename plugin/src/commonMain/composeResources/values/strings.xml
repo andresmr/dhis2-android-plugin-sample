@@ -13,4 +13,9 @@
     <string name="plugin_write_ok">Write permitted — created event %1$s</string>
     <string name="plugin_write_refused">Write refused:</string>
     <string name="plugin_write_failed">Write failed:</string>
+    <string name="plugin_search_button">Scope test: probe tracker search</string>
+    <string name="plugin_searching">Probing search…</string>
+    <string name="plugin_search_baseline">Baseline: %1$s result(s) for the granted program</string>
+    <string name="plugin_search_unavailable">Search unavailable:</string>
+    <string name="plugin_search_results">%1$s result(s)</string>
 </resources>
