@@ -85,9 +85,13 @@ toggle.
 
 ## Why the split between logic and device scenarios
 
-`Dhis2PluginContext.sdk` is a `D2`, and there is no way to construct one outside a logged-in app.
-A context therefore cannot be faked, which means no automated test can exercise the code path that
-reads from DHIS2.
+`Dhis2PluginContext.sdk` is a `D2`, which needs an Android `Context`, a database and an HTTP stack.
+A JVM unit test has none of those, so no test in `commonTest` can exercise the code path that reads
+from DHIS2.
+
+(An *application* module can build one — that is what the development harness does, see `CLAUDE.md`.
+It makes many device scenarios quicker to check by hand, but it is not the Capture App and does not
+make them automated.)
 
 This is not a gap in the harness, it is a property of the API, and the format makes it explicit so
 that:

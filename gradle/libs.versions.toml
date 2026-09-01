@@ -13,6 +13,10 @@ kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
 pluginSdk = "0.1.2-SNAPSHOT"
+# The SDK the plugin-bundle plugin injects into :plugin as compileOnly. The harness must use the
+# *same* version, or it exercises the plugin against an SDK the plugin was not compiled against.
+dhis2AndroidCore = "1.15.0-20260821.111928-77"
+desugarJdkLibs = "2.1.5"
 # Must match the Capture App host's — the plugin DEX resolves these from the host's class loader.
 koin = "4.1.1"
 # Test-only, so free to differ from the host.
@@ -35,6 +39,8 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 plugin-sdk = { module = "org.dhis2.mobile:plugin-sdk", version.ref = "pluginSdk" }
+dhis2-android-core = { module = "org.hisp.dhis:android-core", version.ref = "dhis2AndroidCore" }
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 
 # Provided by the host at runtime — compileOnly in :plugin.
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
