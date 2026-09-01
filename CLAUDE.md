@@ -14,6 +14,10 @@ another checkout.
 3. **`./verify.sh` is the definition of done.** Unit tests, signed bundle, a check that the bundle
    carries nothing the host owns, and the ready-to-post dataStore config. `--cold` additionally
    proves the project builds on a machine that has never seen it.
+4. **Work happens on a branch, never on the default one.** The pipeline cuts `spec/<slug>` from the
+   spec's filename before it edits anything, and commits only after you have reviewed and tried the
+   result — including the device checklist, which is the half no test covers. The PR it opens is a
+   draft, so that checklist is evidence a reviewer sees rather than takes on trust.
 
 What no automated check here can cover: any read or write against DHIS2.
 `Dhis2PluginContext.sdk` is a `D2`, which cannot be constructed outside a logged-in app, so those

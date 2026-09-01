@@ -4,6 +4,9 @@ One file per feature. A spec is the thing that gets agreed *before* code exists,
 survives the session that wrote it. Write it here, review it, then hand it to
 `/plugin-from-spec specs/<your-file>.md`.
 
+The spec's filename becomes the branch — `specs/overdue-events.md` is built on `spec/overdue-events`
+— so name the file after the feature, in words a reviewer would recognise.
+
 Start from `TEMPLATE.md` — it is the five headings with the guidance inline as comments you delete.
 
 Two complete examples sit beside it:
