@@ -13,6 +13,16 @@ kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
 pluginSdk = "0.1.2-SNAPSHOT"
+# Every version below must match the Capture App host's, because the plugin DEX resolves these
+# classes from the *host's* class loader at runtime. They are all `compileOnly` here for the same
+# reason: a second copy inside the plugin DEX is what produces ClassCastException at composition.
+koin = "4.1.1"
+viewModelCompose = "2.9.4"
+# Test-only, so these are free to differ from the host.
+coroutinesTest = "1.10.2"
+turbine = "1.2.1"
+mockitoKotlin = "6.1.0"
+mockito = "5.20.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +40,21 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 plugin-sdk = { module = "org.dhis2.mobile:plugin-sdk", version.ref = "pluginSdk" }
+
+# Provided by the host at runtime — compileOnly in :plugin. Verified present on the Capture App's
+# runtime classpath: koin-compose-viewmodel-android:4.1.1, lifecycle-viewmodel-compose:2.9.4.
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "viewModelCompose" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "viewModelCompose" }
+
+# Test-only.
+koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
+test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+test-turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+test-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockitoKotlin" }
+test-mockito-inline = { module = "org.mockito:mockito-inline", version = "5.2.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

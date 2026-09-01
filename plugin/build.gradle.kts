@@ -18,11 +18,14 @@ plugins {
 version = "2.2.1"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "org.dhis2.pluginimplementationtest.plugin"
         compileSdk = 37
         minSdk = 26
         compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
+        // Opt in to a JVM test target for commonTest. Without this the AGP KMP library plugin
+        // registers no test task at all and `commonTest` is silently never compiled or run.
+        withHostTestBuilder {}.configure {}
     }
     // Future Desktop support — add `jvm("desktop")` and a desktop/ subtree to the bundle.
 
@@ -43,6 +46,32 @@ kotlin {
                 // imports fail to resolve. The actual runtime classes are still
                 // resolved from the host's class loader.
                 implementation(compose.components.resources)
+
+                // Host-provided, so compileOnly — the same rule as compose.*. The bundle build
+                // fails outright if `org/koin/` is packaged, because a second Koin would not share
+                // the host's KoinIsolatedContext.
+                compileOnly(libs.koin.core)
+                compileOnly(libs.koin.compose)
+                compileOnly(libs.koin.compose.viewmodel)
+                compileOnly(libs.androidx.lifecycle.viewmodel)
+                compileOnly(libs.androidx.lifecycle.viewmodel.compose)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.test.coroutines)
+                implementation(libs.test.turbine)
+                // Real dependencies here, not compileOnly: a unit test has no host to borrow them
+                // from. This is also why the layering matters — everything under test lives in
+                // commonMain and depends on interfaces, never on ScopedD2, which cannot be
+                // constructed or usefully faked outside the SDK.
+                implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.koin.core)
+                implementation(libs.koin.test)
+                implementation(libs.test.mockito.kotlin)
+                implementation(libs.test.mockito.inline)
             }
         }
     }

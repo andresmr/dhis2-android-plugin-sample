@@ -17,4 +17,10 @@
     <string name="plugin_search_baseline">Base: %1$s resultado(s) para el programa concedido</string>
     <string name="plugin_search_unavailable">Búsqueda no disponible:</string>
     <string name="plugin_search_results">%1$s resultado(s)</string>
+    <string name="plugin_write_short">Escritura</string>
+    <string name="plugin_search_short">Sondear</string>
+    <string name="plugin_scope_title">Alcance concedido</string>
+    <string name="plugin_counts">%1$s inscritos · %2$s eventos</string>
+    <string name="plugin_datavalue_short">Escribir valor</string>
+    <string name="plugin_dataset_counts">%1$s elementos de datos · %2$s valores</string>
 </resources>

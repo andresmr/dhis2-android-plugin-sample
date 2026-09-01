@@ -18,4 +18,10 @@
     <string name="plugin_search_baseline">Baseline: %1$s result(s) for the granted program</string>
     <string name="plugin_search_unavailable">Search unavailable:</string>
     <string name="plugin_search_results">%1$s result(s)</string>
+    <string name="plugin_write_short">Write test</string>
+    <string name="plugin_search_short">Probe search</string>
+    <string name="plugin_scope_title">Granted scope</string>
+    <string name="plugin_counts">%1$s enrolled · %2$s events</string>
+    <string name="plugin_datavalue_short">Write value</string>
+    <string name="plugin_dataset_counts">%1$s data elements · %2$s values</string>
 </resources>
