@@ -103,6 +103,12 @@ class D2PluginRepository(
         } catch (error: D2Error) {
             // D2Error's `message` is always null — the diagnostic is in the code and description.
             Result.failure(IllegalStateException("[${error.errorCode()}] ${error.errorDescription()}"))
+        } catch (error: Throwable) {
+            // Rule 4 says a repository never throws, and catching only D2Error did not deliver that.
+            // Anything else — an SDK internal, an unexpected null while mapping a result — would
+            // propagate out of the ViewModel's launch and take the host's whole screen down, because
+            // Compose has no error boundary around a composable call.
+            Result.failure(error)
         }
     }
 }

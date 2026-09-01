@@ -85,8 +85,33 @@ plugin scattered with `d2.` calls.
    `PluginCard` caps itself with `heightIn(max = …)` + `verticalScroll`.
 4. A repository returns `Result`, never throws. An exception escaping into the host composition takes
    the enclosing screen with it, and Compose cannot express an error boundary around a composable
-   call.
-5. `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
+   call. This means catching `Throwable`, not just `D2Error` — see `io()`. A repository that only
+   catches the SDK's own error type still lets an unexpected null while mapping a result reach the
+   host.
+5. **Never label a person with an arbitrary attribute.** A tracked entity's attribute values come
+   back in no particular order, so reading "the first one with a value" produces a row labelled
+   *Female*. Resolve the label from the attributes the **program** marks `displayInList`, in their
+   configured sort order — the same ones the app itself lists a tracked entity under:
+
+   ```kotlin
+   d2.programModule().programTrackedEntityAttributes()
+       .byProgram().eq(programUid)
+       .byDisplayInList().isTrue
+       .orderBySortOrder(RepositoryScope.OrderByDirection.ASC)
+   ```
+
+   Fall back to something a human recognises — an org unit name — never to a UID.
+6. **When the card shows N of many, count in SQL and enrich only the N.** `blockingCount()` is a
+   `COUNT(*)`; `blockingGet()` materialises rows. The cost is rarely the events themselves but what
+   resolving each one drags in: an enrollment, a tracked entity *with attribute values*, an org unit.
+   Order and cap **before** any of that, or a program with hundreds of overdue events reads hundreds
+   of records to render three. `ProgramSummary` and `OverdueSummary` both carry a total beside a
+   capped list for this reason.
+
+   Note the SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
+   `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows. Capping before
+   *enrichment* is where the win actually is.
+7. `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
    the `Exception` constructor, so `Throwable.message` is **always null** — read `errorCode()` and
    `errorDescription()`, or every failure renders as the bare word "D2Error".
 
