@@ -7,6 +7,14 @@ pluginManagement {
                 includeGroupByRegex("androidx.*")
             }
         }
+        // Vendored DHIS2 plugin artefacts, committed under vendor/maven so this project builds on a
+        // machine that has never published them — a cloud session, a fresh worktree, a new laptop.
+        // Group-scoped so it can never shadow anything else. Remove once these are published to a
+        // real repository; see vendor/maven/README.md.
+        maven {
+            url = uri("$settingsDir/vendor/maven")
+            content { includeGroupByRegex("org\\.dhis2\\.mobile.*") }
+        }
         mavenLocal()
         mavenCentral()
         gradlePluginPortal()
@@ -19,6 +27,11 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
+        // See the note in pluginManagement above.
+        maven {
+            url = uri("$settingsDir/vendor/maven")
+            content { includeGroupByRegex("org\\.dhis2\\.mobile.*") }
+        }
         mavenLocal()
         mavenCentral()
         // The plugin API exposes D2, so a plugin compiles against org.hisp.dhis:android-core, which

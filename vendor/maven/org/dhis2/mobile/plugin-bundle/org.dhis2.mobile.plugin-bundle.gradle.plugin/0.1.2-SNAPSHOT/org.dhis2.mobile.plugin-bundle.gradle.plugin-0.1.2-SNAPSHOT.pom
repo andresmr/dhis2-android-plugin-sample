@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.dhis2.mobile.plugin-bundle</groupId>
+  <artifactId>org.dhis2.mobile.plugin-bundle.gradle.plugin</artifactId>
+  <version>0.1.2-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>DHIS2 Android plugin bundle packaging</name>
+  <description>Packages a Kotlin Multiplatform library as a signed DHIS2 Android plugin bundle (DEX + Compose resources) and enforces the host's toolchain requirements.</description>
+  <dependencies>
+    <dependency>
+      <groupId>org.dhis2.mobile</groupId>
+      <artifactId>plugin-sdk-gradle</artifactId>
+      <version>0.1.2-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+</project>
