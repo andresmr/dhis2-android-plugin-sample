@@ -1,13 +1,33 @@
 # CLAUDE.md — DHIS2 Android plugin sample
 
-Produces a **signed zip bundle** plugin for the DHIS2 Android Capture App.
-Host repo: `~/StudioProjects/ai-dhis2-android-capture-app` on branch
-`feature/plugin-system`. Full docs: `docs/plugin-system.md` there.
+Produces a **signed zip bundle** plugin for the DHIS2 Android Capture App. This repo is
+self-contained: everything needed to build, test and package a plugin is here, and nothing refers to
+another checkout.
+
+## Start here
+
+1. **Specs live in `specs/`.** One file per feature, Given/When/Then. `specs/README.md` defines the
+   format; `specs/example-program-summary.md` is a complete worked example describing the plugin in
+   this repo today.
+2. **Build a feature from a spec** with `/plugin-from-spec specs/<file>.md`. It restates the spec and
+   stops for approval before writing code, then goes red → green → verified.
+3. **`./verify.sh` is the definition of done.** Unit tests, signed bundle, a check that the bundle
+   carries nothing the host owns, and the ready-to-post dataStore config. `--cold` additionally
+   proves the project builds on a machine that has never seen it.
+
+What no automated check here can cover: any read or write against DHIS2.
+`Dhis2PluginContext.sdk` is a `D2`, which cannot be constructed outside a logged-in app, so those
+live under `## Device scenarios` in a spec and are walked by hand. Keeping SDK access behind
+`PluginRepository` is what keeps everything else automatable.
 
 ## Layout
 
 ```
 Pluginimplementationtest/
+├── specs/    # Feature specifications — the input to /plugin-from-spec
+├── verify.sh # The definition of done
+├── vendor/   # Vendored plugin artefacts so this repo builds standalone (temporary —
+│             # see vendor/maven/README.md for how to remove it)
 ├── app/      # Android application — dev-only preview harness.
 │             # Uses CMP 1.10.3 (same Compose version as :plugin + Capture App).
 │             # A stagePluginAssets task copies :plugin's composeResources into
@@ -69,6 +89,8 @@ plugin scattered with `d2.` calls.
 ## Commands
 
 ```bash
+./verify.sh                            # tests + bundle + checks — the definition of done
+./verify.sh --cold                     # same, from an empty Gradle home and local Maven repo
 ./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
 ./gradlew :plugin:testAndroidHostTest  # unit tests (commonTest, JVM — no device)
 ./gradlew :app:installDebug            # preview harness on emulator
@@ -108,6 +130,36 @@ plugin scattered with `d2.` calls.
    caches by `{id}-{version}.zip`; rebuilding at the same version reuses the
    old cache. Symptom: "my code changes aren't showing."
 
+## Design system
+
+A plugin should look like the app it renders inside. The Capture App carries
+`org.hisp.dhis.mobile:designsystem` on its runtime classpath, so declare it **`compileOnly`** and the
+real components arrive from the host's class loader — the same arrangement as Compose, for the same
+reason (rule 1 below).
+
+- Guide: <https://developers.dhis2.org/docs/mobile/mobile-ui/overview>
+- API reference: <https://dhis2.github.io/dhis2-mobile-ui/api/-mobile%20-u-i/org.hisp.dhis.mobile.ui.designsystem.component/index.html>
+
+Declared in `commonMain` — it is a Compose Multiplatform library, so it belongs beside the other
+`compose.*` entries rather than in `androidMain`:
+
+```kotlin
+compileOnly("org.hisp.dhis.mobile:designsystem:<the version the host ships>")
+```
+
+It resolves from the repositories already in `settings.gradle.kts` (the snapshots repo is what
+serves it), and Gradle selects the `-android` variant automatically. Unlike `plugin-sdk` and
+`android-core`, the bundle plugin does **not** pin this version for you — matching it to the host is
+the author's job, which is what makes the skew warning below worth reading.
+
+Consult the API reference when choosing a component rather than reaching for Material 3 directly —
+it documents what exists (`Button`, `InputDateTime`, `InfoBar`, `ButtonStyle`, and the rest of
+`org.hisp.dhis.mobile.ui.designsystem.component`).
+
+Same skew caution as rule 3: the design system is on a snapshot, so a plugin compiled against an
+older copy than the host ships can still meet `NoSuchMethodError` at composition. Prefer components
+without defaulted parameters where there is a choice.
+
 ## Resources
 
 ```
@@ -142,14 +194,11 @@ Runtime resolution differs by host:
 
 ## Local testing flow
 
-Full instructions: `docs/plugin-system.md` §8 in the host repo. Summary:
-
-1. `./gradlew :plugin-sdk:publishToMavenLocal :plugin-sdk-gradle:publishToMavenLocal`
-   (host repo). Both, always: the `id("org.dhis2.mobile.plugin-bundle")` line resolves
-   from Maven Local and is what pulls in the matching `plugin-sdk`. A stale
-   `plugin-sdk-gradle` there is invisible from this side and surfaces as an unrelated
-   dependency-resolution error in this project.
-2. `./gradlew :plugin:buildPluginBundle` here. `plugin-config.json` beside the bundle is
+1. Nothing to publish first — the plugin API and its Gradle plugin are vendored under
+   `vendor/maven/`, so this project configures and builds on its own. If a build failure looks like
+   a stale plugin API (a method that should exist but does not), read `vendor/maven/README.md`
+   before assuming your code is wrong.
+2. `./verify.sh`, or `./gradlew :plugin:buildPluginBundle` directly. `plugin-config.json` beside the bundle is
    the dataStore entry with `version`, `checksum`, `id` and `entryPoint` already filled
    in — the last two come from `pluginBundle { }` in `plugin/build.gradle.kts`.
 3. `cd plugin/build/outputs/plugin-bundle && python3 -m http.server 8081`.
@@ -161,7 +210,8 @@ Full instructions: `docs/plugin-system.md` §8 in the host repo. Summary:
    module, not from the config's `id`). The dataStore is the only source of plugin
    config; there is no in-app fallback. There is no data-scope field to set — the plugin gets the
    SDK unrestricted, so the config only names *which* code to run.
-5. Rebuild + install `dhis2Debug` variant of the Capture App; log in.
+5. Install the Capture App (`dhis2Debug` variant) and log in. Plugins load when the home screen
+   opens.
 
 For UI-only previews without the Capture App: `./gradlew :app:installDebug`.
 
@@ -176,10 +226,15 @@ For UI-only previews without the Capture App: `./gradlew :app:installDebug`.
 
 ## Backlog
 
+- **Publish `plugin-sdk` and `plugin-sdk-gradle` to a real repository, then delete `vendor/`.**
+  They are committed binaries with no upstream: when the plugin API changes, code here compiles
+  against the stale copy and fails on device with `NoSuchMethodError` or `ClassCastException`.
+  `vendor/maven/README.md` has the removal steps.
 - Extract `buildPluginBundle` into a published Gradle plugin.
 - Publish a `plugin-sdk-test` artefact. `StubDhis2PluginContext` is gone and cannot come back as-is:
   `sdk` is `D2`, which a test has no way to construct. Until then, keep UI in `commonMain` taking
-  plain data (as this sample now does) and exercise the fetch path only in the Capture App.
+  plain data (as this sample now does) and exercise the fetch path only in the Capture App. This is
+  the single change that would most shrink the `## Device scenarios` half of every spec.
 - Narrow the plugin's SDK access. This iteration hands over `D2` unrestricted; the next one restricts
   it to a server-declared subset, enforced inside the SDK rather than by the host.
 - Have the plugin-bundle Gradle plugin pin the host's androidx Compose version the way it already
