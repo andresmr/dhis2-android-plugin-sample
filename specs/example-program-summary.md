@@ -1,7 +1,11 @@
 # Program summary card
 
-> Worked example. This describes the plugin that already exists in this repo, written after the
-> fact — so you can read the spec and the code side by side. A real spec is written first.
+> Worked example, written after the fact from the plugin already in this repo — so you can read the
+> spec and the code side by side. A real spec comes first; see `overdue-events.md` for one that does.
+>
+> Note where the lines fall: the logic scenarios name **state** (`Loaded`, `Failed`, counts, whether
+> the repository was re-asked), because that is what a JVM test can assert. The exact strings on
+> screen are device scenarios — nothing here renders the card.
 
 ## Intent
 
@@ -14,52 +18,59 @@ proves half of what the plugin API can do.
 
 Given the repository returns a summary for "Child Programme" with 36 enrolled and 71 events
 When the card loads
-Then it shows the program name "Child Programme"
-And it shows "36 tracked entity instance(s) available offline"
-And it shows "71 event(s) in this program"
+Then the summary state is Loaded, reporting the program name "Child Programme", 36 enrolled and
+71 events
+And the repository was asked for exactly the configured program UID
 
-Given the repository returns a summary with 36 enrolled and only 3 recent people
+Given the repository returns a summary with 3 recent people
 When the card loads
-Then it lists those 3 people with their attribute labels
-And it shows "… and 33 more"
+Then the loaded summary carries those 3 people, each with its attribute labels resolved
 
 Given the repository returns a summary with no recent people
 When the card loads
-Then it lists nobody
-And it does not show a "… and more" line
+Then the loaded summary carries no people
 
 Given the repository fails to load the summary with the message "Program not found"
 When the card loads
-Then it shows "Program not found"
-And it shows no counts
+Then the summary state is Failed with that message
 
-Given a loaded summary is on screen
+Given a loaded summary
 When the write succeeds with event UID "abc123"
-Then it shows "Created event abc123"
-And the summary is still on screen
+Then the write state is Succeeded with "abc123"
+And the summary state is still Loaded
 
-Given a loaded summary is on screen
+Given a loaded summary
 When the write fails with the message "Write refused"
-Then it shows "Write refused"
-And the summary is still on screen
+Then the write state is Failed with that message
+And the summary state is still Loaded, because a failed write is not a card-level failure
+And the repository was not asked to reload
 
-Given a loaded summary is on screen
+Given a loaded summary
 When the write succeeds
-Then the summary is reloaded, so the event count reflects the new event
+Then the repository is asked for the summary a second time, so the new event is counted
 
-Given the summary has no write target
+Given the repository returns a summary with no write target
 When the card loads
-Then the write control is not offered
+Then the loaded summary carries no write target, so the card offers no write control
 
 ## Device scenarios
 
 Given a server with "Child Programme" synced to the device
 When I open the home screen
-Then the enrolled and event counts match what the tracker list shows for that program
+Then the counts match what the tracker list shows, rendered as "36 tracked entity instance(s)
+available offline" and "71 event(s) in this program"
+
+Given 36 enrolled and 3 shown
+When I read the card
+Then it shows the 3 rows under their attribute labels, then "… and 33 more"
+
+Given a summary with no recent people
+When I read the card
+Then no rows and no "and more" line are shown
 
 Given the card is showing an event count
 When I tap the write control
-Then the count increases by one and the new event UID is shown
+Then the count increases by one and "Created event <uid>" appears
 
 Given a user without write access to the program
 When I tap the write control
