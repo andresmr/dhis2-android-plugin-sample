@@ -1,7 +1,12 @@
 # Overdue events
 
-> Not built yet. This spec exists to be run through `/plugin-from-spec` — it is the first feature
-> specified before its code, and running it is how the harness gets validated.
+> The first feature specified before its code, and how the harness got validated.
+>
+> Three scenarios here were tightened *after* the first run: "no resolvable name" turned out to be
+> satisfiable by reading whichever attribute came back first, which labelled three overdue people
+> "Female", "Female", "Male". A spec that does not say what a name is does not get one. That was a
+> spec gap before it was a code gap, and it is the kind the phase-01 gate can only catch if the
+> spec is specific enough to argue with.
 
 ## Intent
 
@@ -49,9 +54,18 @@ Given the summary loads and the overdue lookup is still running
 When the card is composed
 Then the summary state is Loaded and the overdue state is Loading
 
-Given an overdue event whose tracked entity has no resolvable name
+Given an overdue event whose tracked entity has values for the program's display attributes
 When the card loads
-Then that row carries the org unit name as its label rather than a raw UID
+Then that row's label is those values, in the program's configured order — the label the app itself
+lists that person under, not whichever attribute happens to come back first
+
+Given an overdue event whose tracked entity has no value for any of the program's display attributes
+When the card loads
+Then that row carries the org unit name as its label
+
+Given an overdue event whose org unit is not on this device either
+When the card loads
+Then that row carries a recognisable placeholder, never a raw UID
 
 Given a loaded card and a successful event write
 When the write completes
@@ -65,7 +79,8 @@ Then the overdue count matches what the program's own event list reports as over
 
 Given the card shows 3 overdue rows and a "and N more" line
 When I read the rows
-Then each shows a person or org unit label and a due date, and none shows a raw UID
+Then each shows the person's name as the app lists it — not a gender, a date of birth, or any other
+attribute — with a due date, and none shows a raw UID
 
 Given a program with no overdue events
 When I open the home screen
