@@ -1,0 +1,144 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../plugin-sdk/0.1.2-SNAPSHOT/plugin-sdk-0.1.2-SNAPSHOT.module",
+    "group": "org.dhis2.mobile",
+    "module": "plugin-sdk",
+    "version": "0.1.2-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.5.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "androidApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "io.insert-koin",
+          "module": "koin-core",
+          "version": {
+            "requires": "4.1.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.10"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "plugin-sdk.aar",
+          "url": "plugin-sdk-android-0.1.2-SNAPSHOT.aar",
+          "size": 12501,
+          "sha512": "d330d144c8ad562c70ac4ffabb52a603b6312deb62721783c1ce06e326b47b4f63abb0bc9362939e86b5bae31b10e4bfcb66fe45a798ac825299697598a3e46a",
+          "sha256": "e3a3efb908f980b8ceb7383b9b7c922650065ecadae9e1a54e45fd5831d43fc6",
+          "sha1": "cf63bcf6f4a250dc00c364ba084ba650209ae782",
+          "md5": "9cf250b50c7466ccc66614639e082e6c"
+        }
+      ]
+    },
+    {
+      "name": "androidRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "io.insert-koin",
+          "module": "koin-core",
+          "version": {
+            "requires": "4.1.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.10"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.runtime",
+          "module": "runtime",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "io.insert-koin",
+          "module": "koin-compose",
+          "version": {
+            "requires": "4.1.1"
+          }
+        },
+        {
+          "group": "io.insert-koin",
+          "module": "koin-compose-viewmodel",
+          "version": {
+            "requires": "4.1.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.9.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "plugin-sdk.aar",
+          "url": "plugin-sdk-android-0.1.2-SNAPSHOT.aar",
+          "size": 12501,
+          "sha512": "d330d144c8ad562c70ac4ffabb52a603b6312deb62721783c1ce06e326b47b4f63abb0bc9362939e86b5bae31b10e4bfcb66fe45a798ac825299697598a3e46a",
+          "sha256": "e3a3efb908f980b8ceb7383b9b7c922650065ecadae9e1a54e45fd5831d43fc6",
+          "sha1": "cf63bcf6f4a250dc00c364ba084ba650209ae782",
+          "md5": "9cf250b50c7466ccc66614639e082e6c"
+        }
+      ]
+    },
+    {
+      "name": "androidSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "files": [
+        {
+          "name": "plugin-sdk-android-0.1.2-SNAPSHOT-sources.jar",
+          "url": "plugin-sdk-android-0.1.2-SNAPSHOT-sources.jar",
+          "size": 5398,
+          "sha512": "59701527e6cb6672884d2031596fc31cc0edcfff0f11a7cc47b3b6d249cbea657134108c55934e16c3685c48494450aa5ff83e8ea78611e045e04c3cd21c229f",
+          "sha256": "b50e0eb4a9600481f74c3d3812db905f93e137da6bbe6aa37f38297a3bdf28c2",
+          "sha1": "91c2d04ceb474c939fd3e7adc2396b51bc2b9c5f",
+          "md5": "2aa8a1c2a02a1afb10535a04f33ce2a4"
+        }
+      ]
+    }
+  ]
+}
