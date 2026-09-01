@@ -69,6 +69,43 @@ git checkout -b spec/<spec-file-slug>
 - Branch from wherever the session already is. In a worktree or a cloud session that may not be the
   default branch, and silently re-pointing it is worse than working from the wrong base visibly.
 
+## Phase 01c — Fold the answers back into the spec
+
+The first commit on the branch is the spec, before any code.
+
+Everything settled in phase 01 lives in a conversation that ends when the session does. The spec is
+what survives. If the answers stay in the chat, the next run of the same file asks the same questions
+and is free to answer them differently — so the spec has to absorb them.
+
+Edit `specs/<file>.md` so that:
+
+- **Every question you asked is answered in the spec**, as a scenario or a sentence — not in a
+  comment about what was decided, but as the requirement itself.
+- **Every vague `Then` that caused a question is tightened** so it could not be satisfied by the
+  reading you had to ask about. "Has no resolvable name" was satisfiable by reading any attribute at
+  all; naming the program's display attributes is what makes it wrong to get wrong.
+- **Assumptions that turned out incorrect are deleted**, not annotated.
+- **Anything the human ruled out** is stated, if a future reader would otherwise propose it again.
+
+Then show the diff, and commit it alone:
+
+```bash
+git add specs/<file>.md
+git commit -m "spec: <feature> — fold in the phase 01 answers"
+```
+
+Alone, because a reviewer should be able to read *what we agreed the feature is* before *how it was
+built*, and because a spec change that arrives mixed into an implementation commit is one nobody
+reads.
+
+**The test of whether this phase was done properly:** re-running `/plugin-from-spec` on the committed
+spec should ask nothing new and arrive at the same design. If it would still need the conversation,
+the spec is not finished — go back and put the missing decision in it. A spec that only works with
+the chat that produced it is not a spec.
+
+If phase 01 raised no questions and required no assumptions, say so and skip the commit rather than
+manufacturing an edit.
+
 ## Phase 02 — Red
 
 Write the tests for the logic scenarios in `plugin/src/commonTest/`, following the existing
@@ -136,13 +173,13 @@ Report, in this order:
    `plugin-config.json`, with `downloadUrl` generated for an emulator on port 8081. Point at them, and
    flag that the URL needs changing only for a physical device or a different port.
 5. **Anything you changed that the spec did not ask for**, and why.
-6. **The branch name**, and that nothing is committed yet.
+6. **The branch name**, and that only the spec is committed so far — the implementation is not.
 
 Do not claim a device scenario works because the logic scenario behind it passes. They are different
 claims and the whole format exists to keep them apart.
 
-Then **stop.** Nothing is committed yet. The work sits on the branch from phase 01b for the human to
-read, run, and try on a device.
+Then **stop.** Only the phase-01c spec commit exists; the implementation is uncommitted on the
+phase-01b branch for the human to read, run, and try on a device.
 
 ## Phase 06 — Commit and open a PR
 
@@ -154,8 +191,9 @@ If they come back with changes, apply them and return to phase 04. Repeat until 
 
 On approval:
 
-1. **Commit** to the phase-01b branch. One commit unless the work genuinely separates. The message
-   should name the spec it came from, what is proven by tests, and what was verified by hand.
+1. **Commit** the implementation to the phase-01b branch. One commit unless the work genuinely
+   separates, and separate from the phase-01c spec commit, which is already there. The message should
+   name the spec it came from, what is proven by tests, and what was verified by hand.
 2. **Push**, then open the PR:
 
    ```bash
@@ -177,8 +215,8 @@ On approval:
 
 ## Rules that apply throughout
 
-- **Commit only in phase 06, only after approval, and never on the default branch.** Phases 02 to 05
-  leave the work uncommitted on the phase-01b branch.
+- **Commit the spec in phase 01c, and the implementation only in phase 06 after approval — never on
+  the default branch.** Phases 02 to 05 leave the code uncommitted on the phase-01b branch.
 - **Do not weaken a test to make it pass.** If the spec and the implementation disagree, that is a
   finding for the report, not something to smooth over.
 - **Report failures with their output.** If `verify.sh` fails, say what failed and paste the relevant
