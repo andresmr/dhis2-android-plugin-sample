@@ -51,6 +51,24 @@ costs a paragraph here and an afternoon later.
 
 If the user approves with changes, restate the changed rows before continuing.
 
+## Phase 01b — Branch
+
+Only after approval, and before touching a single file.
+
+```bash
+git rev-parse --abbrev-ref HEAD          # confirm the starting point
+git status --porcelain                   # must be empty
+git checkout -b spec/<spec-file-slug>
+```
+
+- **Never work on the default branch.** If `git status` is not clean, stop and say so — do not stash,
+  do not commit someone else's work in progress.
+- Name the branch `spec/<slug>` after the spec file, not after your guess at the feature.
+  `specs/overdue-events.md` → `spec/overdue-events`. The branch and the spec are the same unit of
+  work, and the name should make that obvious a month later.
+- Branch from wherever the session already is. In a worktree or a cloud session that may not be the
+  default branch, and silently re-pointing it is worse than working from the wrong base visibly.
+
 ## Phase 02 — Red
 
 Write the tests for the logic scenarios in `plugin/src/commonTest/`, following the existing
@@ -118,15 +136,49 @@ Report, in this order:
    `plugin-config.json`, with `downloadUrl` generated for an emulator on port 8081. Point at them, and
    flag that the URL needs changing only for a physical device or a different port.
 5. **Anything you changed that the spec did not ask for**, and why.
+6. **The branch name**, and that nothing is committed yet.
 
 Do not claim a device scenario works because the logic scenario behind it passes. They are different
 claims and the whole format exists to keep them apart.
+
+Then **stop.** Nothing is committed yet. The work sits on the branch from phase 01b for the human to
+read, run, and try on a device.
+
+## Phase 06 — Commit and open a PR
+
+**Only when the human has said the work is good.** This is a second gate, and it is as firm as the
+one in phase 01: reviewing the device scenarios is the entire point of phases 04 and 05, and a commit
+that lands before that review says the checklist was decoration.
+
+If they come back with changes, apply them and return to phase 04. Repeat until they approve.
+
+On approval:
+
+1. **Commit** to the phase-01b branch. One commit unless the work genuinely separates. The message
+   should name the spec it came from, what is proven by tests, and what was verified by hand.
+2. **Push**, then open the PR:
+
+   ```bash
+   git push -u origin HEAD
+   gh pr create --fill --draft
+   ```
+
+   Draft, because the device checklist is evidence a reviewer should see rather than take on trust.
+   The PR body should carry the device scenarios and their outcome.
+
+3. **If there is no `origin`,** stop and say so plainly — the commit is safely on the branch, and a
+   PR needs a remote that does not exist yet. Do not create a repository, add a remote, or push
+   anywhere on your own initiative: where this code lives is not a decision to make on someone's
+   behalf. Tell them what is needed (`gh repo create`, or an existing remote to add) and leave it.
+4. **If `gh` is missing or unauthenticated** — likely in a cloud session — commit and push if you can,
+   then hand back the branch name and let them open the PR.
 
 ---
 
 ## Rules that apply throughout
 
-- **Never commit.** Make the changes, run the checks, report. Committing is the user's call.
+- **Commit only in phase 06, only after approval, and never on the default branch.** Phases 02 to 05
+  leave the work uncommitted on the phase-01b branch.
 - **Do not weaken a test to make it pass.** If the spec and the implementation disagree, that is a
   finding for the report, not something to smooth over.
 - **Report failures with their output.** If `verify.sh` fails, say what failed and paste the relevant
