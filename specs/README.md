@@ -4,8 +4,13 @@ One file per feature. A spec is the thing that gets agreed *before* code exists,
 survives the session that wrote it. Write it here, review it, then hand it to
 `/plugin-from-spec specs/<your-file>.md`.
 
-`example-program-summary.md` is a complete worked example, reverse-engineered from the plugin that
-ships in this repo today. Copy it as a starting point.
+Start from `TEMPLATE.md` — it is the five headings with the guidance inline as comments you delete.
+
+Two complete examples sit beside it:
+
+- `example-program-summary.md` — the plugin that ships in this repo today, written after the fact, so
+  the spec and the code can be read side by side.
+- `overdue-events.md` — specified before its code exists, which is the normal direction.
 
 ## The sections
 
@@ -24,21 +29,30 @@ specify.
 Given / When / Then, one blank line between scenarios. These become tests in
 `plugin/src/commonTest/` and run on the JVM with no device.
 
-A scenario belongs here when its Given can be arranged by handing the ViewModel a fake repository.
-That covers most of what a plugin actually gets wrong: mapping, counting, empty states, error text,
-what survives a failure.
+A scenario belongs here when **both** halves hold:
+
+1. Its `Given` can be arranged by handing the ViewModel a fake `PluginRepository`.
+2. Its `Then` names something the **UI state** exposes — a case of a sealed interface, a value, a
+   count, a message — or a call the repository should or should not have received.
+
+Point 2 is the one that catches people out, and it follows from how the tests work: they call
+`advanceUntilIdle()` and assert on `state.value`. Nothing renders the card, so a `Then` about a
+string on screen has nothing to assert against.
 
 ```
 Given the repository returns a summary with 3 events
 When the card loads
-Then the card shows "3 event(s) in this program"
+Then the summary state is Loaded, reporting 3 events
 ```
+
+Together these still cover most of what a plugin actually gets wrong: mapping, counting, empty
+states, error text, and what survives a failure.
 
 ### `## Device scenarios`
 
-Given / When / Then for anything that needs a real DHIS2 read or write. **These cannot be
-automated** — see *Why the split* below — so they become a manual checklist the pipeline prints at
-the end, and they are the only scenarios a human has to walk through.
+Given / When / Then for anything needing a real DHIS2 read or write, **and for what is actually
+rendered**. Neither can be automated — see *Why the split* below — so they become a manual checklist
+the pipeline prints at the end, and they are the only scenarios a human has to walk through.
 
 Keep them few. Every scenario here is a step someone repeats by hand on every change.
 
@@ -81,7 +95,18 @@ repository and describe the result as plain data, and the scenario moves.
 
 ## Writing a good Then
 
-A `Then` is an assertion, so it has to name something observable — a string on screen, a count, a
-state. "Then the data is correct" cannot become a test. "Then the card shows `Write refused` and the
-previous summary is still visible" can, and it also happens to describe a real bug this plugin
-had.
+A `Then` is an assertion, so it has to name something observable. "Then the data is correct" cannot
+become a test. "Then the write state is Failed and the summary state is still Loaded" can — and it
+describes a real bug this plugin had.
+
+For a **logic** scenario, observable means *present in the UI state*. If the value you want to assert
+is one the card derives while rendering — "and N more", computed from two counts — you have two
+options, in order of preference:
+
+1. **Push the derived value into the state.** Have the state carry `N`. It becomes assertable, and
+   the composable gets simpler. This is usually the right design anyway.
+2. **Move the scenario to `## Device scenarios`** and phrase it there as the string on screen.
+
+And never assert on how many times the state was emitted. Emission counts change whenever anything
+else in the load path changes, and every test coupled to them then breaks together for no real
+reason. That has already happened once here.

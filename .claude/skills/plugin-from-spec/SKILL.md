@@ -22,7 +22,8 @@ Read the spec and `CLAUDE.md`. Read the existing code in the layer you are about
 small project and reading `PluginUiState`, `PluginViewModel` and `PluginRepository` costs almost
 nothing and prevents inventing a second way to do what already has one.
 
-`specs/README.md` defines the section headings. If the spec is missing a section, say so now rather
+`specs/README.md` defines the section headings and `specs/TEMPLATE.md` is the skeleton. If the spec
+is missing a section, or still carries the template's `<!-- -->` guidance comments, say so now rather
 than discovering it in phase 03.
 
 ## Phase 01 — Restate, then stop
@@ -31,8 +32,12 @@ than discovering it in phase 03.
 
 Produce, in the conversation:
 
-1. A table with one row per **logic scenario**: the scenario, and the name of the test that will
-   assert it.
+1. A table with one row per **logic scenario**: the scenario, the name of the test that will assert
+   it, and **what in the UI state that test reads**. If you cannot name the state a scenario asserts
+   against, it is not a logic scenario — the tests call `advanceUntilIdle()` and read `state.value`,
+   so a `Then` about a string on screen has nothing to assert. Say so, and propose either pushing the
+   derived value into the state or moving the scenario to the device checklist. Do not silently
+   reinterpret it.
 2. A table with one row per **device scenario**: the scenario, and the manual step it becomes.
 3. Assumptions you are making that the spec does not state.
 4. Questions the spec leaves genuinely open — ones where two readings lead to different code. Not a
@@ -110,7 +115,8 @@ Report, in this order:
    outside a running app, so no automated test here can exercise a read or a write.
 3. **The metadata the device scenarios need**, from the spec's `## Metadata needs`.
 4. **The install steps** — `verify.sh` already printed the bundle path, its checksum and the
-   `plugin-config.json`; point at them and note that `downloadUrl` still needs setting.
+   `plugin-config.json`, with `downloadUrl` generated for an emulator on port 8081. Point at them, and
+   flag that the URL needs changing only for a physical device or a different port.
 5. **Anything you changed that the spec did not ask for**, and why.
 
 Do not claim a device scenario works because the logic scenario behind it passes. They are different
