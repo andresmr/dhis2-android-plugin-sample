@@ -116,7 +116,17 @@ plugin scattered with `d2.` calls.
    Note the SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
    `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows. Capping before
    *enrichment* is where the win actually is.
-7. `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
+7. **Enforce a display budget where a test can reach it.** Capping in the repository is an
+   efficiency measure — it avoids resolving rows that will never be shown — and it lives in
+   `androidMain` behind `D2`, which no unit test can construct. The cap that keeps the card inside
+   its height budget is a *different* promise, made to a host whose column does not scroll, and it
+   belongs in the ViewModel where a fake repository can hand it too many rows and a test can watch
+   what happens. Share the limit from `commonMain` and apply it in both places; the duplication is
+   the point, not an oversight.
+
+   Generally: when a rule matters for correctness and its only enforcement sits in `androidMain`, it
+   is not enforced, it is hoped for.
+8. `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
    the `Exception` constructor, so `Throwable.message` is **always null** — read `errorCode()` and
    `errorDescription()`, or every failure renders as the bare word "D2Error".
 
