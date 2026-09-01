@@ -13,6 +13,11 @@ kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
 pluginSdk = "0.1.2-SNAPSHOT"
+# Must match the Capture App host's — the plugin DEX resolves these from the host's class loader.
+koin = "4.1.1"
+# Test-only, so free to differ from the host.
+coroutinesTest = "1.10.2"
+turbine = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +35,16 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 plugin-sdk = { module = "org.dhis2.mobile:plugin-sdk", version.ref = "pluginSdk" }
+
+# Provided by the host at runtime — compileOnly in :plugin.
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+
+# Test-only.
+test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+test-turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version = "2.9.4" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
