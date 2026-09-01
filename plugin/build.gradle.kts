@@ -18,11 +18,14 @@ plugins {
 version = "1.5.0"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "org.dhis2.pluginimplementationtest.plugin"
         compileSdk = 37
         minSdk = 26
         compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
+        // Opt in to a JVM test target for commonTest. Without this the AGP KMP library plugin
+        // registers no test task at all and `commonTest` is silently never compiled or run.
+        withHostTestBuilder {}.configure {}
     }
     // Future Desktop support — add `jvm("desktop")` and a desktop/ subtree to the bundle.
 
@@ -43,6 +46,24 @@ kotlin {
                 // imports fail to resolve. The actual runtime classes are still
                 // resolved from the host's class loader.
                 implementation(compose.components.resources)
+
+                // Host-provided, so compileOnly — same rule as compose.*. A ViewModel needs the
+                // lifecycle artifact; the runtime classes come from the Capture App.
+                compileOnly(libs.androidx.lifecycle.viewmodel)
+                compileOnly(libs.koin.core)
+                compileOnly(libs.koin.compose)
+                compileOnly(libs.koin.compose.viewmodel)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.test.coroutines)
+                implementation(libs.test.turbine)
+                // Real dependencies here, not compileOnly: a unit test has no host to borrow from.
+                implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.koin.core)
             }
         }
     }
