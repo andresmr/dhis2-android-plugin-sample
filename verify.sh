@@ -81,8 +81,9 @@ fi
 CONFIG="$BUNDLE_DIR/plugin-config.json"
 if [[ -f "$CONFIG" ]]; then
   echo
-  echo "  plugin-config.json — the dataStore entry, with version and checksum already filled in."
-  echo "  Set downloadUrl, then POST it to dhis2AndroidPlugins/config on the server:"
+  echo "  plugin-config.json — the dataStore entry. Version, checksum and downloadUrl are all"
+  echo "  filled in, the URL assuming an emulator and a static server on port 8081; change it"
+  echo "  only for a physical device or another port. POST to dhis2AndroidPlugins/config:"
   echo
   sed 's/^/    /' "$CONFIG"
 fi
