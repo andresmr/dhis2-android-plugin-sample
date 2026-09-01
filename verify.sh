@@ -91,5 +91,9 @@ fi
 printf '\n\033[32m✓ verified\033[0m\n'
 echo
 echo "Not covered by any of the above: every scenario under '## Device scenarios' in the spec."
-echo "Those need a real DHIS2 login — the plugin API hands over a D2, which cannot be constructed"
-echo "outside a running app, so no test here can exercise a read or a write. Walk them by hand."
+echo "A JVM test cannot construct a D2, so nothing here exercises a read or a write."
+echo
+echo "  ./gradlew :app:installDebug    runs the plugin against a real server (see CLAUDE.md)"
+echo
+echo "That covers most of the checklist. What still needs the Capture App itself: the height budget,"
+echo "the class-loader reload, resource resolution, Koin isolation, and Compose version skew."

@@ -166,8 +166,10 @@ Report, in this order:
 
 1. **What is proven.** The logic scenarios, each with its passing test.
 2. **What is not.** The device scenarios, as a numbered checklist someone can walk through. State
-   plainly that these are unverified — the plugin API hands over a `D2`, which cannot be constructed
-   outside a running app, so no automated test here can exercise a read or a write.
+   plainly that these are unverified — a JVM unit test cannot construct a `D2`, so nothing in
+   `commonTest` exercises a read or a write. Point at `./gradlew :app:installDebug`, which runs the
+   plugin against a real server and makes most of the checklist quicker, and say which items still
+   need the Capture App itself (see *Development harness* in `CLAUDE.md`).
 3. **The metadata the device scenarios need**, from the spec's `## Metadata needs`.
 4. **The install steps** — `verify.sh` already printed the bundle path, its checksum and the
    `plugin-config.json`, with `downloadUrl` generated for an emulator on port 8081. Point at them, and
