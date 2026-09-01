@@ -15,9 +15,14 @@ another checkout.
    carries nothing the host owns, and the ready-to-post dataStore config. `--cold` additionally
    proves the project builds on a machine that has never seen it.
 4. **Work happens on a branch, never on the default one.** The pipeline cuts `spec/<slug>` from the
-   spec's filename before it edits anything, and commits only after you have reviewed and tried the
-   result — including the device checklist, which is the half no test covers. The PR it opens is a
-   draft, so that checklist is evidence a reviewer sees rather than takes on trust.
+   spec's filename before it edits anything, and commits the implementation only after you have
+   reviewed and tried the result — including the device checklist, which is the half no test covers.
+   The PR it opens is a draft, so that checklist is evidence a reviewer sees rather than takes on
+   trust.
+5. **Answering its questions changes the spec, not just the chat.** Whatever gets settled at the
+   approval gate is folded back into `specs/<file>.md` and committed first, on its own. The test is
+   that re-running the pipeline on the committed spec asks nothing new — a spec that only works
+   alongside the conversation that produced it is not finished.
 
 What no automated check here can cover: any read or write against DHIS2.
 `Dhis2PluginContext.sdk` is a `D2`, which cannot be constructed outside a logged-in app, so those

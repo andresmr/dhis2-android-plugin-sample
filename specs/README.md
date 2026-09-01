@@ -7,6 +7,11 @@ survives the session that wrote it. Write it here, review it, then hand it to
 The spec's filename becomes the branch — `specs/overdue-events.md` is built on `spec/overdue-events`
 — so name the file after the feature, in words a reviewer would recognise.
 
+**A spec is not finished when you hand it over; it is finished when the pipeline stops asking.**
+Whatever gets settled while answering its questions is written back into the file and committed
+before any code, so the spec that produced the implementation is the spec in the repo. If re-running
+the same file would still need the conversation, something it learned is missing from it.
+
 Start from `TEMPLATE.md` — it is the five headings with the guidance inline as comments you delete.
 
 Two complete examples sit beside it:
