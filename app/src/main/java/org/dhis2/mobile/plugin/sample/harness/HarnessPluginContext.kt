@@ -6,15 +6,11 @@ import org.dhis2.mobile.plugin.sdk.PluginMetadata
 import org.hisp.dhis.android.core.D2
 
 /**
- * A real [Dhis2PluginContext], carrying a real [D2].
+ * A real [Dhis2PluginContext], so the harness can render the plugin's entry point rather than only
+ * the card beneath it.
  *
- * The Capture App builds one of these from the server's dataStore config; the harness builds one
- * from `local.properties` and a live login. The plugin cannot tell the difference, which is the
- * point — it lets `MyPlugin.content()` be rendered here, not just the card beneath it.
- *
- * The metadata is invented, because in the harness nobody has configured this plugin on a server.
- * Only [PluginMetadata.id] and [PluginMetadata.version] are ever read by a plugin at runtime; the
- * rest exists for the host's own pipeline, which is not running here.
+ * The metadata is invented: no server has configured this plugin, and the host pipeline that would
+ * normally supply it is not running here.
  */
 class HarnessPluginContext(
     override val sdk: D2,

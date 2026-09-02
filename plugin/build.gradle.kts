@@ -70,22 +70,12 @@ kotlin {
     }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Pinned build-tools, so the bundle is reproducible across machines.
-//
-// The bundle plugin discovers d8 and apksigner from the *newest installed* build-tools. That is a
-// different version on a CI runner than on a laptop — a GitHub runner ships several, up to 37.0.0
-// — and a different d8 emits different DEX bytes. The result was the same commit producing two
-// checksums, so an artefact built by CI could not be used against a dataStore entry whose checksum
-// came from a local build.
-//
-// Pinning here rather than in the workflow is deliberate: reproducibility is a property this
-// project claims, so it belongs where the claim is made, and it holds for everyone rather than only
-// for CI. Raise it when the whole toolchain moves, and expect the checksum to change when you do.
-// ──────────────────────────────────────────────────────────────────────────────
+// The bundle plugin takes d8 and apksigner from the *newest installed* build-tools, which differs
+// between a CI runner and a laptop and changes the DEX bytes. Pinned here rather than in CI because
+// reproducibility is this project's claim, not the workflow's. Raising it moves the checksum.
 val pluginBuildToolsVersion = "36.1.0"
 
-/** AGP's own resolution order: `sdk.dir` in local.properties, then the environment. */
+/** AGP's own resolution order. */
 val androidSdkDirectory: File = run {
     val local = Properties().apply {
         val file = rootProject.file("local.properties")
@@ -101,8 +91,7 @@ val androidSdkDirectory: File = run {
 }
 
 val pinnedBuildTools: File = File(androidSdkDirectory, "build-tools/$pluginBuildToolsVersion").also {
-    // Failing here beats failing inside the bundle task with a bare "no such file": this says which
-    // version is missing and how to get it.
+    // Named at configuration time, rather than a bare missing-file error inside the bundle task.
     require(it.isDirectory) {
         "build-tools $pluginBuildToolsVersion is not installed at $it — " +
             "install it with: sdkmanager --install \"build-tools;$pluginBuildToolsVersion\""
@@ -119,6 +108,16 @@ pluginBundle {
 
     d8Executable = File(pinnedBuildTools, "d8")
     apksignerExecutable = File(pinnedBuildTools, "apksigner")
+}
+
+// Tests of androidMain code need the SDK *classes* at runtime. It is compileOnly for the plugin —
+// the Capture App supplies it through its class loader — so it is on the compile classpath but not
+// the runtime one, and a JVM test that builds a real D2Error dies with NoClassDefFoundError.
+//
+// Extending rather than declaring it: the version stays wherever the bundle plugin injected it, so
+// there is nothing here to keep equal to the host by hand.
+configurations.named("androidHostTestRuntimeOnly") {
+    extendsFrom(configurations.getByName("androidMainCompileOnly"))
 }
 
 compose.resources {

@@ -16,18 +16,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Harness credentials, read from local.properties — which is gitignored, is already
-// the convention for machine-local settings, and so cannot be committed by accident.
-// Absent values are not an error at build time: the app says what is missing instead
-// of failing to compile, so cloning and opening the project still works.
-//
-//   dhis2.serverUrl=https://play.im.dhis2.org/dev
-//   dhis2.username=admin
-//   dhis2.password=district
-// ──────────────────────────────────────────────────────────────────────────────
-// `Properties` imported explicitly: inside a Gradle Kotlin script `java` resolves to the
-// JavaPluginExtension accessor, which shadows the package root and makes `java.util.…` unresolvable.
+/** Harness credentials, from gitignored local.properties.
+ * Enter credentials to test the plugin:
+ * dhis2.serverUrl=
+ * dhis2.username=
+ * dhis2.password=
+ **/
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
@@ -94,8 +88,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "DHIS2_SERVER_URL", "\"${harnessProperty("dhis2.serverUrl")}\"")
         buildConfigField("String", "DHIS2_USERNAME", "\"${harnessProperty("dhis2.username")}\"")
@@ -172,7 +164,4 @@ dependencies {
     debugImplementation("org.jetbrains.compose.ui:ui-tooling:1.10.3")
     implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.10.3")
 
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 }
