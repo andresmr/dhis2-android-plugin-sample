@@ -278,7 +278,7 @@ plugin rendering real structure over zero rows looks like a plugin bug. That fir
 afterwards the database is on the device and startup is immediate. Every step is named on screen, so
 a slow run is distinguishable from a stuck one.
 
-It renders `MyPlugin.content()` itself, not just `PluginCard`, by reproducing the host's private Koin
+It renders `ProgramOverviewPlugin.content()` itself, not just `PluginCard`, by reproducing the host's private Koin
 container (`PluginHost`) — a harness whose DI differs from the host's proves the wrong thing.
 
 **What it cannot tell you.** It is not the Capture App, and these need the real host:
@@ -314,7 +314,16 @@ So the harness shrinks the device checklist; it does not empty it.
 5. Install the Capture App (`dhis2Debug` variant) and log in. Plugins load when the home screen
    opens.
 
-For UI-only previews without the Capture App: `./gradlew :app:installDebug`.
+**Or serve it from a GitHub release instead of a local server.** Tag with the plugin's version
+(`git tag v1.6.0 && git push origin v1.6.0`) and the release workflow attaches the bundle, its
+checksum and a `plugin-config.json` whose `downloadUrl` already points at the asset — so steps 3 and
+4 become "post the config from the release". Slower per iteration, since it needs a tag and a CI run,
+and CI signs with its own throwaway key so that config's checksum only matches *that* asset. Use the
+local server while iterating; use a release to hand the bundle to someone else.
+
+For UI work without a server at all, the `@Preview`s in `MainActivity` render `PluginCard` against
+sample state. For the plugin against real data, `./gradlew :app:installDebug` (see *Development
+harness*).
 
 ## Entry-point contract
 

@@ -18,7 +18,7 @@ class HarnessPluginContext(
     override val pluginMetadata: PluginMetadata = PluginMetadata(
         id = "org.dhis2.mobile.plugin.sample",
         version = "harness",
-        entryPoint = "org.dhis2.mobile.plugin.sample.MyPlugin",
+        entryPoint = "org.dhis2.mobile.plugin.sample.ProgramOverviewPlugin",
         injectionPoints = listOf(InjectionPoint.HOME_ABOVE_PROGRAM_LIST),
     )
 }
