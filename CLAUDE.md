@@ -175,12 +175,20 @@ plugin scattered with `d2.` calls.
 6. **The plugin declares no identity.** Its id, version, entry point and injection points all live
    in the server dataStore config. `pluginBundle { pluginId; entryPoint }` only fills in the
    generated `plugin-config.json` for convenience — it reaches neither the bundle nor the host.
-7. **The bundle is only reproducible against a pinned `build-tools`.** `plugin/build.gradle.kts`
-   points `d8Executable` and `apksignerExecutable` at an explicit version, because the bundle plugin
-   otherwise takes the newest installed — and a different `d8` emits different DEX bytes, so the same
-   commit yields two checksums and a CI artefact cannot be used against a dataStore entry whose
-   checksum came from a local build. Raising the pin is fine; expect the checksum to move, and CI's
-   `sdkmanager` step must install whatever you raise it to.
+7. **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
+   `plugin/build.gradle.kts` pins `d8Executable`/`apksignerExecutable`, because the bundle plugin
+   otherwise takes the newest installed and a different `d8` emits different DEX bytes. With that
+   pinned, CI and a laptop produce an identical `classes.dex`, `MANIFEST.MF` and `.SF` — measured,
+   not assumed.
+
+   What still differs is `META-INF/*.RSA`, the signature block, because it carries the signer's
+   certificate and CI mints a throwaway debug key per run. That is inherent: a signed artefact's
+   bytes depend on the key, and no pin changes it. So **a CI artefact's checksum will not match a
+   local build's**, and a dataStore entry has to use the checksum of the bundle you actually serve.
+   Same key plus same build-tools does reproduce exactly.
+
+   Raising the pin is fine; expect the checksum to move, and CI's `sdkmanager` step must install
+   whatever you raise it to.
 8. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
    caches by `{id}-{version}.zip`; rebuilding at the same version reuses the
    old cache. Symptom: "my code changes aren't showing."
