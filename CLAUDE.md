@@ -175,7 +175,13 @@ plugin scattered with `d2.` calls.
 6. **The plugin declares no identity.** Its id, version, entry point and injection points all live
    in the server dataStore config. `pluginBundle { pluginId; entryPoint }` only fills in the
    generated `plugin-config.json` for convenience — it reaches neither the bundle nor the host.
-7. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
+7. **The bundle is only reproducible against a pinned `build-tools`.** `plugin/build.gradle.kts`
+   points `d8Executable` and `apksignerExecutable` at an explicit version, because the bundle plugin
+   otherwise takes the newest installed — and a different `d8` emits different DEX bytes, so the same
+   commit yields two checksums and a CI artefact cannot be used against a dataStore entry whose
+   checksum came from a local build. Raising the pin is fine; expect the checksum to move, and CI's
+   `sdkmanager` step must install whatever you raise it to.
+8. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
    caches by `{id}-{version}.zip`; rebuilding at the same version reuses the
    old cache. Symptom: "my code changes aren't showing."
 

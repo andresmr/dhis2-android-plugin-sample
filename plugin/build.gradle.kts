@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -69,6 +70,45 @@ kotlin {
     }
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Pinned build-tools, so the bundle is reproducible across machines.
+//
+// The bundle plugin discovers d8 and apksigner from the *newest installed* build-tools. That is a
+// different version on a CI runner than on a laptop — a GitHub runner ships several, up to 37.0.0
+// — and a different d8 emits different DEX bytes. The result was the same commit producing two
+// checksums, so an artefact built by CI could not be used against a dataStore entry whose checksum
+// came from a local build.
+//
+// Pinning here rather than in the workflow is deliberate: reproducibility is a property this
+// project claims, so it belongs where the claim is made, and it holds for everyone rather than only
+// for CI. Raise it when the whole toolchain moves, and expect the checksum to change when you do.
+// ──────────────────────────────────────────────────────────────────────────────
+val pluginBuildToolsVersion = "36.1.0"
+
+/** AGP's own resolution order: `sdk.dir` in local.properties, then the environment. */
+val androidSdkDirectory: File = run {
+    val local = Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }.getProperty("sdk.dir")
+
+    val path = local
+        ?: System.getenv("ANDROID_HOME")
+        ?: System.getenv("ANDROID_SDK_ROOT")
+        ?: error("No Android SDK found: set sdk.dir in local.properties, or ANDROID_HOME.")
+
+    File(path)
+}
+
+val pinnedBuildTools: File = File(androidSdkDirectory, "build-tools/$pluginBuildToolsVersion").also {
+    // Failing here beats failing inside the bundle task with a bare "no such file": this says which
+    // version is missing and how to get it.
+    require(it.isDirectory) {
+        "build-tools $pluginBuildToolsVersion is not installed at $it — " +
+            "install it with: sdkmanager --install \"build-tools;$pluginBuildToolsVersion\""
+    }
+}
+
 // Fills in the two fields of the generated `plugin-config.json` that a build cannot work out for
 // itself, so the file is postable to the dataStore as it is instead of needing the same two edits
 // after every build. The bundle carries neither value — the server dataStore stays the single
@@ -76,6 +116,9 @@ kotlin {
 pluginBundle {
     pluginId = "org.dhis2.mobile.plugin.sample"
     entryPoint = "org.dhis2.mobile.plugin.sample.ProgramOverviewPlugin"
+
+    d8Executable = File(pinnedBuildTools, "d8")
+    apksignerExecutable = File(pinnedBuildTools, "apksigner")
 }
 
 compose.resources {
