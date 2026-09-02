@@ -19,14 +19,14 @@ plugins {
 // Harness plumbing: stage `:plugin`'s Compose Multiplatform resources into this
 // app's assets directory at `composeResources/{package}/…` so CMP's
 // DefaultAndroidResourceReader (which reads via `Context.assets.open(path)`)
-// can find them when MainActivity instantiates MyPlugin directly for preview.
+// can find them when MainActivity instantiates ProgramOverviewPlugin directly for preview.
 //
 // In production (Capture App host), the host's PluginSlot injects a filesystem-
 // backed ResourceReader — we don't need AssetManager there. The harness skips
 // that pipeline, so we mimic what AGP normally does for CMP-library consumers.
 // ──────────────────────────────────────────────────────────────────────────────
 
-val pluginResourcePackage = "org.dhis2.pluginimplementationtest.plugin.generated.resources"
+val pluginResourcePackage = "org.dhis2.mobile.plugin.sample.generated.resources"
 val pluginProject = project(":plugin")
 
 abstract class StagePluginAssets : DefaultTask() {
@@ -62,14 +62,14 @@ val stagePluginAssets by tasks.registering(StagePluginAssets::class) {
 }
 
 android {
-    namespace = "org.dhis2.pluginimplementationtest"
+    namespace = "org.dhis2.mobile.plugin.sample.harness"
     // Must be >= the Capture App host's compileSdk, since plugin-sdk is compiled against it.
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "org.dhis2.pluginimplementationtest"
+        applicationId = "org.dhis2.mobile.plugin.sample.harness"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

@@ -43,7 +43,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Plugin implementation test"
+rootProject.name = "dhis2-android-plugin-sample"
 include(":app")
 include(":plugin")
  

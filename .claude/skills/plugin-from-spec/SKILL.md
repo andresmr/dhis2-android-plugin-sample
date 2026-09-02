@@ -128,7 +128,7 @@ Implement in this order, which is the direction the dependencies point:
 model → PluginRepository (interface) → PluginUiState → PluginViewModel → PluginCard → D2PluginRepository
 ```
 
-- Everything except `D2PluginRepository` and `MyPlugin` goes in `commonMain`.
+- Everything except `D2PluginRepository` and `ProgramOverviewPlugin` goes in `commonMain`.
 - `D2PluginRepository` is the **only** file allowed to mention `D2`. If you find yourself wanting the
   SDK further up, the design has gone wrong — push the call down and return plain data.
 - Repositories return `Result`, never throw. An exception escaping into the host composition takes
