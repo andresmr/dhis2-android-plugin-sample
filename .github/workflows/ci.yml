@@ -35,10 +35,17 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install the SDK packages this project builds against
-        # compileSdk is 37 (plugin/build.gradle.kts). build-tools supplies d8 and apksigner, which
-        # buildPluginBundle shells out to — it picks the newest installed, so the version here only
-        # has to exist, not match.
-        run: sdkmanager --install "platforms;android-37" "build-tools;36.1.0"
+        # Platforms are minor-versioned now, so compileSdk 37 is "platforms;android-37.0" — plain
+        # "android-37" is not a package and sdkmanager fails with "Failed to find package".
+        #
+        # build-tools supplies the d8 and apksigner that buildPluginBundle shells out to, and it
+        # picks the *newest installed*. Pinned to 36.1.0 deliberately, matching a developer machine:
+        # the bundle is meant to be reproducible, and a different d8 can produce different DEX bytes
+        # and therefore a different checksum from the same sources.
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;36.1.0"
+          echo "platforms:   $(ls "$ANDROID_HOME/platforms" | tr '\n' ' ')"
+          echo "build-tools: $(ls "$ANDROID_HOME/build-tools" | tr '\n' ' ')"
 
       - name: Create a debug keystore
         # The bundle is signed with ~/.android/debug.keystore, which a fresh runner does not have.
