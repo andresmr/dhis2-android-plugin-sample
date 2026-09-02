@@ -264,11 +264,13 @@ Runtime resolution differs by host:
 samples. Configure it in `local.properties`, which is gitignored and never committed:
 
 ```properties
-dhis2.serverUrl=http://10.0.2.2:8080     # 10.0.2.2 is the host machine, from an emulator
-dhis2.username=admin
-dhis2.password=district
+dhis2.serverUrl=<your server>            # from an emulator, 10.0.2.2 is the host machine
+dhis2.username=<your username>
+dhis2.password=<your password>
 dhis2.programUid=                        # optional; blank picks the first tracker programme
 ```
+
+Use a development server: the harness writes as well as reads.
 
 Then `./gradlew :app:installDebug`. On first run it instantiates `D2`, logs in, downloads metadata
 and then **tracker data** — metadata alone brings programmes and stages but no enrolments, and a

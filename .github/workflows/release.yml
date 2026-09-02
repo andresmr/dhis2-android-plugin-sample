@@ -1,0 +1,131 @@
+name: Release
+
+# Tag with the plugin's version to publish it:
+#
+#   git tag v1.5.0 && git push origin v1.5.0
+#
+# The tag must match `version` in plugin/build.gradle.kts, because the bundle is named from it and
+# the Capture App caches by {id}-{version}. Publishing a changed bundle under a version a device has
+# already seen leaves that device on the old code.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to publish
+        required: true
+
+permissions:
+  contents: write   # to create the release and upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up the Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install the SDK packages this project builds against
+        run: sdkmanager --install "platforms;android-37.0" "build-tools;36.1.0"
+
+      - name: Create a debug keystore
+        # Same throwaway key as CI. A bundle signed here is fine to install, but its signature — and
+        # so its checksum — differs from one built anywhere else. A real publisher signs with their
+        # own key; see pluginBundle { signing { … } }.
+        run: |
+          mkdir -p ~/.android
+          keytool -genkeypair -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android -keypass android \
+            -alias androiddebugkey \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -keyalg RSA -keysize 2048 -validity 10000
+
+      - name: Verify
+        run: ./verify.sh
+
+      - name: Check the tag matches the plugin version
+        # A mismatch would publish plugin-1.5.0.zip under tag v1.6.0, so the download URL in the
+        # config would 404. Cheaper to fail here than to debug it on a device.
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          zip=$(find plugin/build/outputs/plugin-bundle -maxdepth 1 -name '*.zip' -print -quit)
+          version=$(basename "$zip" .zip | sed 's/^plugin-//')
+          if [ "$tag" != "v$version" ]; then
+            echo "::error::Tag $tag does not match the built bundle version $version." \
+                 "Set version in plugin/build.gradle.kts to ${tag#v}, or tag v$version."
+            exit 1
+          fi
+          echo "tag $tag matches bundle version $version"
+
+      - name: Point the dataStore config at the release asset
+        # The bundle plugin hardcodes an emulator URL in the generated config, which is right for
+        # local testing and wrong for anything published. Rewriting it here rather than editing the
+        # file by hand keeps the checksum and the URL in the same artefact.
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          dir=plugin/build/outputs/plugin-bundle
+          zip=$(basename "$(find "$dir" -maxdepth 1 -name '*.zip' -print -quit)")
+          url="${{ github.server_url }}/${{ github.repository }}/releases/download/$tag/$zip"
+
+          python3 - "$dir/plugin-config.json" "$url" <<'PY'
+          import json, sys
+          path, url = sys.argv[1], sys.argv[2]
+          with open(path) as f:
+              config = json.load(f)
+          config["plugins"][0]["downloadUrl"] = url
+          with open(path, "w") as f:
+              json.dump(config, f, indent=2)
+              f.write("\n")
+          print("downloadUrl ->", url)
+          PY
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          dir=plugin/build/outputs/plugin-bundle
+
+          # Notes go to a file rather than inline: a heredoc inside $( ) is parsed for quotes while
+          # bash looks for the closing paren, so a lone apostrophe in the prose breaks the script.
+          cat > /tmp/notes.md <<'NOTES'
+          Signed plugin bundle for the DHIS2 Android Capture App.
+
+          To install, post `plugin-config.json` to the dataStore on your server. Its `downloadUrl`
+          already points at the asset below, and its `checksum` matches that asset:
+
+          ```bash
+          curl -u <user>:<pass> -H 'Content-Type: application/json' \
+            -d @plugin-config.json \
+            "https://<server>/api/dataStore/dhis2AndroidPlugins/config"
+          ```
+
+          POST creates the key; use PUT to update it afterwards.
+
+          The bundle is signed with a throwaway debug key generated in CI, so its checksum differs
+          from a locally built one. Use the `plugin-config.json` from this release, not one built on
+          your own machine.
+          NOTES
+
+          gh release create "$tag" \
+            --title "$tag" \
+            --verify-tag \
+            --notes-file /tmp/notes.md \
+            "$dir"/*.zip "$dir"/*.sha256 "$dir/plugin-config.json"
