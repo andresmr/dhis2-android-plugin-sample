@@ -93,6 +93,12 @@ from DHIS2.
 It makes many device scenarios quicker to check by hand, but it is not the Capture App and does not
 make them automated.)
 
+What *is* automated is everything the repository does either side of the SDK call: the mapping from
+SDK types to plain models, and the translation of failures. Those are functions, tested in
+`plugin/src/androidHostTest/` against real `Event` and `TrackedEntityInstance` values built through
+the SDK's own builders — no `D2` and no mocks. Only the query itself needs a device, and its failure
+mode is "no rows", which shows up immediately.
+
 This is not a gap in the harness, it is a property of the API, and the format makes it explicit so
 that:
 

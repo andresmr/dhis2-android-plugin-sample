@@ -74,7 +74,10 @@ commonMain   commonMain      commonMain                        androidMain
 - **ViewModel** — exposes `StateFlow<PluginUiState>`, calls the repository, maps failures into
   state. Never touches `D2`.
 - **Repository interface** — the plugin's own vocabulary, returning `Result` of plain models.
-- **D2PluginRepository** — the *only* place `D2` appears. Moves blocking calls off the main thread
+- **D2PluginRepository** — the *only* place `D2` appears. Its mapping and its error translation are
+  top-level functions so they can be tested without a `D2`: see `plugin/src/androidHostTest/`, which
+  builds real SDK values through their builders rather than mocking a fluent chain seven links deep.
+  What stays untested is the query itself. Moves blocking calls off the main thread
   and translates `D2Error` into a message worth showing.
 
 **Why the interface earns its keep.** It is the seam that lets the ViewModel and UI be unit-tested on
@@ -326,6 +329,23 @@ For UI-only previews without the Capture App: `./gradlew :app:installDebug`.
   They are committed binaries with no upstream: when the plugin API changes, code here compiles
   against the stale copy and fails on device with `NoSuchMethodError` or `ClassCastException`.
   `vendor/maven/README.md` has the removal steps.
+- **Get the DHIS2 SDK out of this template's build files entirely.** A plugin project should declare
+  one DHIS2 dependency, `plugin-sdk`, and nothing else. Two changes in the Capture App, then one
+  here:
+
+  1. `AndroidPluginWiring` should extend the test runtime classpath from `androidMain`'s
+     `compileOnly`, the way `plugin/build.gradle.kts` does by hand today. Tests of `androidMain` code
+     need the SDK *classes* at runtime; no plugin author should have to know that.
+  2. A `plugin-sdk-test` artefact with `api(android-core)`, for `:app` and test source sets — never
+     for `:plugin`, which must keep the SDK `compileOnly` or the bundle inspector will flag it, as it
+     already flags `koin-core` for being `api` in `plugin-sdk`.
+  3. Then `:app` depends on `plugin-sdk-test` instead of `android-core`, and `dhis2AndroidCore`
+     disappears from `gradle/libs.versions.toml`. The SDK version then lives in exactly one place —
+     the Capture App's own catalog, reaching here through `HostToolchain`.
+
+  Worth keeping two promises separate when designing `plugin-sdk-test`: putting SDK classes on a JVM
+  test classpath (what the tests in `androidHostTest` need) is not the same as *initialising a real
+  `D2`*, which needs an Android `Context` and a database and so only serves instrumented tests.
 - Extract `buildPluginBundle` into a published Gradle plugin.
 - Publish a `plugin-sdk-test` artefact. A *unit test* still has no way to construct a `D2` — it needs
   an Android `Context`, a database and an HTTP stack — so `commonTest` remains fake-repository

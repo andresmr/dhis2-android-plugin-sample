@@ -97,23 +97,27 @@ class D2PluginRepository(
                 attribute.uid() to (attribute.displayFormName() ?: attribute.displayName() ?: attribute.uid())
             }
 
-    private suspend fun <T> io(block: () -> T): Result<T> = withContext(Dispatchers.IO) {
-        try {
-            Result.success(block())
-        } catch (error: D2Error) {
-            // D2Error's `message` is always null — the diagnostic is in the code and description.
-            Result.failure(IllegalStateException("[${error.errorCode()}] ${error.errorDescription()}"))
-        } catch (error: Throwable) {
-            // Rule 4 says a repository never throws, and catching only D2Error did not deliver that.
-            // Anything else — an SDK internal, an unexpected null while mapping a result — would
-            // propagate out of the ViewModel's launch and take the host's whole screen down, because
-            // Compose has no error boundary around a composable call.
-            Result.failure(error)
-        }
-    }
+    private suspend fun <T> io(block: () -> T): Result<T> =
+        withContext(Dispatchers.IO) { catchingD2(block) }
 }
 
-private fun TrackedEntityInstance.toPerson(attributeNames: Map<String, String>) = EnrolledPerson(
+/**
+ * Runs [block], turning any failure into a [Result] rather than letting it escape.
+ *
+ * `D2Error.message` is always null, so its diagnostic has to be read from the code and description.
+ * Everything else is caught too: an exception reaching the ViewModel's launch would take the host's
+ * whole screen down, and Compose cannot express an error boundary around a composable call.
+ */
+internal fun <T> catchingD2(block: () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (error: D2Error) {
+        Result.failure(IllegalStateException("[${error.errorCode()}] ${error.errorDescription()}"))
+    } catch (error: Throwable) {
+        Result.failure(error)
+    }
+
+internal fun TrackedEntityInstance.toPerson(attributeNames: Map<String, String>) = EnrolledPerson(
     uid = uid(),
     attributes = trackedEntityAttributeValues()
         .orEmpty()

@@ -37,14 +37,7 @@ import org.dhis2.mobile.plugin.sample.ui.theme.PluginSampleTheme
 
 private const val PLUGIN_VERSION = "1.0.0"
 
-/**
- * Sample data, kept for the `@Preview`s at the bottom of this file.
- *
- * The harness itself no longer needs it: it signs in to a real server and renders the plugin against
- * real data (see [HarnessSession]). These stay because a `@Preview` cannot log in, and rendering
- * every UI state — loading, failed, written — is faster from sample data than from a server that
- * happens to be in the right state.
- */
+/** For the `@Preview`s below, which cannot log in. The harness itself uses real data. */
 private val SAMPLE = ProgramSummary(
     programUid = "IpHINAT79UW",
     programName = "Child Programme",
@@ -66,13 +59,9 @@ private val SAMPLE = ProgramSummary(
 private val LOADED = PluginUiState(summary = SummaryState.Loaded(SAMPLE))
 
 /**
- * The development harness: signs in to a real DHIS2 and renders the real plugin against real data.
+ * Signs in to a real DHIS2 (credentials from `local.properties`) and renders the real plugin.
  *
- * Credentials come from `local.properties` (see `app/build.gradle.kts`), so nothing is hardcoded here
- * and nothing is committed. On first run this downloads metadata, which takes minutes; afterwards the
- * session and the database are already on the device and startup is immediate.
- *
- * This is **not** the Capture App. See `CLAUDE.md` for what only the real host can exercise.
+ * Not the Capture App — `CLAUDE.md` lists what only the real host can exercise.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -131,7 +120,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Deliberately plain: the harness's own chrome should never be mistaken for the plugin's UI. */
+/** Plain on purpose: harness chrome should not be mistaken for the plugin's UI. */
 @Composable
 private fun HarnessMessage(title: String, body: String) {
     Column(modifier = Modifier.padding(16.dp)) {
