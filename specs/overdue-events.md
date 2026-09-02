@@ -1,12 +1,15 @@
 # Overdue events
 
-> The first feature specified before its code, and how the harness got validated.
+> **Not implemented.** Kept as an example of a spec written *before* its code — the normal
+> direction — and as the one that validated the pipeline. It was built through
+> `/plugin-from-spec` twice; the implementation was discarded afterwards to keep this repository
+> focused on the harness.
 >
-> Three scenarios here were tightened *after* the first run: "no resolvable name" turned out to be
-> satisfiable by reading whichever attribute came back first, which labelled three overdue people
-> "Female", "Female", "Male". A spec that does not say what a name is does not get one. That was a
-> spec gap before it was a code gap, and it is the kind the phase-01 gate can only catch if the
-> spec is specific enough to argue with.
+> Three scenarios here were tightened after the first attempt: "no resolvable name" turned out to
+> be satisfiable by reading whichever attribute came back first, which labelled three overdue
+> people "Female", "Female", "Male". A spec that does not say what a name is does not get one —
+> a spec gap before it was a code gap, and the kind the approval gate can only catch if the spec
+> is specific enough to argue with.
 
 ## Intent
 
