@@ -1,6 +1,7 @@
 @file:Suppress("DEPRECATION")
 
 import java.io.File
+import java.util.Properties
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
@@ -14,6 +15,19 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
 }
+
+/** Harness credentials, from gitignored local.properties.
+ * Enter credentials to test the plugin:
+ * dhis2.serverUrl=
+ * dhis2.username=
+ * dhis2.password=
+ **/
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun harnessProperty(key: String): String = localProperties.getProperty(key).orEmpty()
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Harness plumbing: stage `:plugin`'s Compose Multiplatform resources into this
@@ -75,7 +89,14 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "DHIS2_SERVER_URL", "\"${harnessProperty("dhis2.serverUrl")}\"")
+        buildConfigField("String", "DHIS2_USERNAME", "\"${harnessProperty("dhis2.username")}\"")
+        buildConfigField("String", "DHIS2_PASSWORD", "\"${harnessProperty("dhis2.password")}\"")
+        buildConfigField("String", "PLUGIN_PROGRAM_UID", "\"${harnessProperty("dhis2.programUid")}\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -88,6 +109,8 @@ android {
         }
     }
     compileOptions {
+        // android-core's AAR metadata requires this of every consumer, and the harness is now one.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -114,6 +137,15 @@ androidComponents {
 dependencies {
     implementation(project(":plugin"))
     implementation(libs.plugin.sdk)
+    // A real dependency here, not compileOnly: :app is the harness, not a shipped plugin, and it is
+    // the thing that constructs the D2 the plugin is handed.
+    implementation(libs.dhis2.android.core)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    // The harness has to reproduce the host's private container, because the plugin resolves its
+    // ViewModel with koinViewModel() and would otherwise find no Koin at all.
+    implementation(libs.koin.core)
+    implementation(libs.koin.compose)
+    implementation(libs.koin.compose.viewmodel)
 
     // Android / lifecycle integration — not Compose proper; compatible with CMP.
     implementation(libs.androidx.core.ktx)
@@ -132,7 +164,4 @@ dependencies {
     debugImplementation("org.jetbrains.compose.ui:ui-tooling:1.10.3")
     implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.10.3")
 
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 }

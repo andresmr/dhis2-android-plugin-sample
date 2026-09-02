@@ -38,10 +38,11 @@ jobs:
         # Platforms are minor-versioned now, so compileSdk 37 is "platforms;android-37.0" — plain
         # "android-37" is not a package and sdkmanager fails with "Failed to find package".
         #
-        # build-tools supplies the d8 and apksigner that buildPluginBundle shells out to, and it
-        # picks the *newest installed*. Pinned to 36.1.0 deliberately, matching a developer machine:
-        # the bundle is meant to be reproducible, and a different d8 can produce different DEX bytes
-        # and therefore a different checksum from the same sources.
+        # build-tools must contain the version plugin/build.gradle.kts pins, because the bundle
+        # points d8 and apksigner at it explicitly. Installing it here was never sufficient on its
+        # own: a runner already ships several versions, and before the project pinned one the bundle
+        # took whichever was newest — which is why the same commit produced a different checksum here
+        # than on a laptop.
         run: |
           sdkmanager --install "platforms;android-37.0" "build-tools;36.1.0"
           echo "platforms:   $(ls "$ANDROID_HOME/platforms" | tr '\n' ' ')"

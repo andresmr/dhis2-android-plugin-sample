@@ -1,9 +1,6 @@
 [versions]
-agp = "9.3.1"
+agp = "9.3.2"
 coreKtx = "1.18.0"
-junit = "4.13.2"
-junitVersion = "1.3.0"
-espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 # Must match the Capture App host's `kotlin` version. The plugin DEX resolves the Kotlin stdlib
@@ -13,6 +10,10 @@ kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
 pluginSdk = "0.1.2-SNAPSHOT"
+# Only the harness app declares the SDK; :plugin gets it from the bundle plugin at the host's
+# version. Keep this equal to what that plugin injects — see CLAUDE.md.
+dhis2AndroidCore = "1.15.0-20260821.111928-77"
+desugarJdkLibs = "2.1.5"
 # Must match the Capture App host's — the plugin DEX resolves these from the host's class loader.
 koin = "4.1.1"
 # Test-only, so free to differ from the host.
@@ -21,9 +22,6 @@ turbine = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -35,6 +33,8 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 plugin-sdk = { module = "org.dhis2.mobile:plugin-sdk", version.ref = "pluginSdk" }
+dhis2-android-core = { module = "org.hisp.dhis:android-core", version.ref = "dhis2AndroidCore" }
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 
 # Provided by the host at runtime — compileOnly in :plugin.
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }

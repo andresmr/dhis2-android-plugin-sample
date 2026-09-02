@@ -24,10 +24,14 @@ another checkout.
    that re-running the pipeline on the committed spec asks nothing new — a spec that only works
    alongside the conversation that produced it is not finished.
 
-What no automated check here can cover: any read or write against DHIS2.
-`Dhis2PluginContext.sdk` is a `D2`, which cannot be constructed outside a logged-in app, so those
-live under `## Device scenarios` in a spec and are walked by hand. Keeping SDK access behind
-`PluginRepository` is what keeps everything else automatable.
+What no automated check here can cover: any read or write against DHIS2. A JVM unit test cannot
+construct a `D2` — it needs an Android `Context`, a database and an HTTP stack — so those live under
+`## Device scenarios` in a spec and are walked by hand. Keeping SDK access behind `PluginRepository`
+is what keeps everything else automatable.
+
+To walk them quickly, `./gradlew :app:installDebug` runs the plugin against a real server with real
+data — see *Development harness* below, including the shorter list of things only the Capture App
+can tell you.
 
 ## Layout
 
@@ -70,7 +74,10 @@ commonMain   commonMain      commonMain                        androidMain
 - **ViewModel** — exposes `StateFlow<PluginUiState>`, calls the repository, maps failures into
   state. Never touches `D2`.
 - **Repository interface** — the plugin's own vocabulary, returning `Result` of plain models.
-- **D2PluginRepository** — the *only* place `D2` appears. Moves blocking calls off the main thread
+- **D2PluginRepository** — the *only* place `D2` appears. Its mapping and its error translation are
+  top-level functions so they can be tested without a `D2`: see `plugin/src/androidHostTest/`, which
+  builds real SDK values through their builders rather than mocking a fluent chain seven links deep.
+  What stays untested is the query itself. Moves blocking calls off the main thread
   and translates `D2Error` into a message worth showing.
 
 **Why the interface earns its keep.** It is the seam that lets the ViewModel and UI be unit-tested on
@@ -83,8 +90,9 @@ plugin scattered with `d2.` calls.
 1. Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
    `D2PluginRepository` belong in `androidMain`, because `D2` is the Android SDK.
 2. Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
-   `@Preview` and the harness render the real UI. Note the harness *cannot* fake a context any more:
-   `sdk` is `D2` and there is no way to construct one.
+   `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
+   real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
+   it is the faster loop for pure UI work.
 3. **Stay short.** The host renders the slot in a non-scrolling `Column` above its own program list,
    so height taken here is height taken from the host and anything past the viewport is unreachable.
    `PluginCard` caps itself with `heightIn(max = …)` + `verticalScroll`.
@@ -170,7 +178,21 @@ plugin scattered with `d2.` calls.
 6. **The plugin declares no identity.** Its id, version, entry point and injection points all live
    in the server dataStore config. `pluginBundle { pluginId; entryPoint }` only fills in the
    generated `plugin-config.json` for convenience — it reaches neither the bundle nor the host.
-7. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
+7. **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
+   `plugin/build.gradle.kts` pins `d8Executable`/`apksignerExecutable`, because the bundle plugin
+   otherwise takes the newest installed and a different `d8` emits different DEX bytes. With that
+   pinned, CI and a laptop produce an identical `classes.dex`, `MANIFEST.MF` and `.SF` — measured,
+   not assumed.
+
+   What still differs is `META-INF/*.RSA`, the signature block, because it carries the signer's
+   certificate and CI mints a throwaway debug key per run. That is inherent: a signed artefact's
+   bytes depend on the key, and no pin changes it. So **a CI artefact's checksum will not match a
+   local build's**, and a dataStore entry has to use the checksum of the bundle you actually serve.
+   Same key plus same build-tools does reproduce exactly.
+
+   Raising the pin is fine; expect the checksum to move, and CI's `sdkmanager` step must install
+   whatever you raise it to.
+8. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
    caches by `{id}-{version}.zip`; rebuilding at the same version reuses the
    old cache. Symptom: "my code changes aren't showing."
 
@@ -236,6 +258,39 @@ Runtime resolution differs by host:
   registers the directory via AGP 9's Variant Sources API. CMP's default
   Android reader then finds them via `context.assets.open(…)`.
 
+## Development harness
+
+`:app` signs in to a real DHIS2 and renders the real plugin against real data — no hand-written
+samples. Configure it in `local.properties`, which is gitignored and never committed:
+
+```properties
+dhis2.serverUrl=http://10.0.2.2:8080     # 10.0.2.2 is the host machine, from an emulator
+dhis2.username=admin
+dhis2.password=district
+dhis2.programUid=                        # optional; blank picks the first tracker programme
+```
+
+Then `./gradlew :app:installDebug`. On first run it instantiates `D2`, logs in, downloads metadata
+and then **tracker data** — metadata alone brings programmes and stages but no enrolments, and a
+plugin rendering real structure over zero rows looks like a plugin bug. That first run takes minutes;
+afterwards the database is on the device and startup is immediate. Every step is named on screen, so
+a slow run is distinguishable from a stuck one.
+
+It renders `MyPlugin.content()` itself, not just `PluginCard`, by reproducing the host's private Koin
+container (`PluginHost`) — a harness whose DI differs from the host's proves the wrong thing.
+
+**What it cannot tell you.** It is not the Capture App, and these need the real host:
+
+- the non-scrolling slot and the height budget
+- the class-loader reload and its `ClassCastException`
+- Compose resource resolution through `FileSystemResourceReader`
+- that plugin bindings cannot leak into the host's container
+- androidx Compose version skew — `NoSuchMethodError` reproduces only against the host's versions
+
+So the harness shrinks the device checklist; it does not empty it.
+
+**Use a development server.** The harness writes as well as reads.
+
 ## Local testing flow
 
 1. Nothing to publish first — the plugin API and its Gradle plugin are vendored under
@@ -274,11 +329,29 @@ For UI-only previews without the Capture App: `./gradlew :app:installDebug`.
   They are committed binaries with no upstream: when the plugin API changes, code here compiles
   against the stale copy and fails on device with `NoSuchMethodError` or `ClassCastException`.
   `vendor/maven/README.md` has the removal steps.
+- **Get the DHIS2 SDK out of this template's build files entirely.** A plugin project should declare
+  one DHIS2 dependency, `plugin-sdk`, and nothing else. Two changes in the Capture App, then one
+  here:
+
+  1. `AndroidPluginWiring` should extend the test runtime classpath from `androidMain`'s
+     `compileOnly`, the way `plugin/build.gradle.kts` does by hand today. Tests of `androidMain` code
+     need the SDK *classes* at runtime; no plugin author should have to know that.
+  2. A `plugin-sdk-test` artefact with `api(android-core)`, for `:app` and test source sets — never
+     for `:plugin`, which must keep the SDK `compileOnly` or the bundle inspector will flag it, as it
+     already flags `koin-core` for being `api` in `plugin-sdk`.
+  3. Then `:app` depends on `plugin-sdk-test` instead of `android-core`, and `dhis2AndroidCore`
+     disappears from `gradle/libs.versions.toml`. The SDK version then lives in exactly one place —
+     the Capture App's own catalog, reaching here through `HostToolchain`.
+
+  Worth keeping two promises separate when designing `plugin-sdk-test`: putting SDK classes on a JVM
+  test classpath (what the tests in `androidHostTest` need) is not the same as *initialising a real
+  `D2`*, which needs an Android `Context` and a database and so only serves instrumented tests.
 - Extract `buildPluginBundle` into a published Gradle plugin.
-- Publish a `plugin-sdk-test` artefact. `StubDhis2PluginContext` is gone and cannot come back as-is:
-  `sdk` is `D2`, which a test has no way to construct. Until then, keep UI in `commonMain` taking
-  plain data (as this sample now does) and exercise the fetch path only in the Capture App. This is
-  the single change that would most shrink the `## Device scenarios` half of every spec.
+- Publish a `plugin-sdk-test` artefact. A *unit test* still has no way to construct a `D2` — it needs
+  an Android `Context`, a database and an HTTP stack — so `commonTest` remains fake-repository
+  territory. What changed is that an application module can: see `HarnessPluginContext`. An
+  instrumented test in this repo could now drive a real `D2` against a test server, which is the
+  route to shrinking the `## Device scenarios` half of every spec.
 - Narrow the plugin's SDK access. This iteration hands over `D2` unrestricted; the next one restricts
   it to a server-declared subset, enforced inside the SDK rather than by the host.
 - Have the plugin-bundle Gradle plugin pin the host's androidx Compose version the way it already

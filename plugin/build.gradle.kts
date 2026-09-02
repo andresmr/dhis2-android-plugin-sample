@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -69,6 +70,34 @@ kotlin {
     }
 }
 
+// The bundle plugin takes d8 and apksigner from the *newest installed* build-tools, which differs
+// between a CI runner and a laptop and changes the DEX bytes. Pinned here rather than in CI because
+// reproducibility is this project's claim, not the workflow's. Raising it moves the checksum.
+val pluginBuildToolsVersion = "36.1.0"
+
+/** AGP's own resolution order. */
+val androidSdkDirectory: File = run {
+    val local = Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }.getProperty("sdk.dir")
+
+    val path = local
+        ?: System.getenv("ANDROID_HOME")
+        ?: System.getenv("ANDROID_SDK_ROOT")
+        ?: error("No Android SDK found: set sdk.dir in local.properties, or ANDROID_HOME.")
+
+    File(path)
+}
+
+val pinnedBuildTools: File = File(androidSdkDirectory, "build-tools/$pluginBuildToolsVersion").also {
+    // Named at configuration time, rather than a bare missing-file error inside the bundle task.
+    require(it.isDirectory) {
+        "build-tools $pluginBuildToolsVersion is not installed at $it — " +
+            "install it with: sdkmanager --install \"build-tools;$pluginBuildToolsVersion\""
+    }
+}
+
 // Fills in the two fields of the generated `plugin-config.json` that a build cannot work out for
 // itself, so the file is postable to the dataStore as it is instead of needing the same two edits
 // after every build. The bundle carries neither value — the server dataStore stays the single
@@ -76,6 +105,19 @@ kotlin {
 pluginBundle {
     pluginId = "org.dhis2.mobile.plugin.sample"
     entryPoint = "org.dhis2.mobile.plugin.sample.ProgramOverviewPlugin"
+
+    d8Executable = File(pinnedBuildTools, "d8")
+    apksignerExecutable = File(pinnedBuildTools, "apksigner")
+}
+
+// Tests of androidMain code need the SDK *classes* at runtime. It is compileOnly for the plugin —
+// the Capture App supplies it through its class loader — so it is on the compile classpath but not
+// the runtime one, and a JVM test that builds a real D2Error dies with NoClassDefFoundError.
+//
+// Extending rather than declaring it: the version stays wherever the bundle plugin injected it, so
+// there is nothing here to keep equal to the host by hand.
+configurations.named("androidHostTestRuntimeOnly") {
+    extendsFrom(configurations.getByName("androidMainCompileOnly"))
 }
 
 compose.resources {
