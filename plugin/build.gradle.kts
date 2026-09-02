@@ -19,7 +19,7 @@ version = "1.5.0"
 
 kotlin {
     android {
-        namespace = "org.dhis2.pluginimplementationtest.plugin"
+        namespace = "org.dhis2.mobile.plugin.sample"
         compileSdk = 37
         minSdk = 26
         compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
@@ -74,13 +74,13 @@ kotlin {
 // after every build. The bundle carries neither value — the server dataStore stays the single
 // source of truth for this plugin's identity, and the host reads both from there.
 pluginBundle {
-    pluginId = "org.dhis2.pluginimplementationtest"
-    entryPoint = "org.dhis2.pluginimplementationtest.MyPlugin"
+    pluginId = "org.dhis2.mobile.plugin.sample"
+    entryPoint = "org.dhis2.mobile.plugin.sample.ProgramOverviewPlugin"
 }
 
 compose.resources {
     // Override default (which derives from the root project name — gives an ugly
     // backtick-escaped package when the project name contains spaces).
-    packageOfResClass = "org.dhis2.pluginimplementationtest.plugin.generated.resources"
+    packageOfResClass = "org.dhis2.mobile.plugin.sample.generated.resources"
     publicResClass = true
 }

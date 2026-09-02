@@ -32,7 +32,7 @@ live under `## Device scenarios` in a spec and are walked by hand. Keeping SDK a
 ## Layout
 
 ```
-Pluginimplementationtest/
+dhis2-android-plugin-sample/
 ├── specs/    # Feature specifications — the input to /plugin-from-spec
 ├── verify.sh # The definition of done
 ├── vendor/   # Vendored plugin artefacts so this repo builds standalone (temporary —
@@ -48,7 +48,7 @@ Pluginimplementationtest/
     │   └── ui/           # PluginUiState, PluginViewModel, PluginCard
     ├── src/commonTest/   # Unit tests — run on the JVM, no device
     └── src/androidMain/kotlin/…/
-        ├── MyPlugin.kt   # entry point: provideKoinModule + content, nothing else
+        ├── ProgramOverviewPlugin.kt   # entry point: provideKoinModule + content, nothing else
         └── data/         # D2PluginRepository — the only file that sees the SDK
 ```
 
@@ -80,7 +80,7 @@ plugin scattered with `d2.` calls.
 
 **Rules.**
 
-1. Put it in `commonMain` unless it needs a platform API. In practice only `MyPlugin` and
+1. Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
    `D2PluginRepository` belong in `androidMain`, because `D2` is the Android SDK.
 2. Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
    `@Preview` and the harness render the real UI. Note the harness *cannot* fake a context any more:
@@ -216,8 +216,8 @@ plugin/src/commonMain/composeResources/
 Access from code:
 
 ```kotlin
-import org.dhis2.pluginimplementationtest.plugin.generated.resources.Res
-import org.dhis2.pluginimplementationtest.plugin.generated.resources.plugin_title
+import org.dhis2.mobile.plugin.sample.plugin.generated.resources.Res
+import org.dhis2.mobile.plugin.sample.plugin.generated.resources.plugin_title
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -261,7 +261,7 @@ For UI-only previews without the Capture App: `./gradlew :app:installDebug`.
 
 ## Entry-point contract
 
-`MyPlugin` must:
+`ProgramOverviewPlugin` must:
 
 - Implement `org.dhis2.mobile.plugin.sdk.Dhis2Plugin`.
 - Live in `src/androidMain`, because `Dhis2PluginContext.sdk` is `D2` — the DHIS2 *Android* SDK.
