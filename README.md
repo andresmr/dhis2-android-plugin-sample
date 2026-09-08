@@ -106,21 +106,16 @@ PluginUiState  ←  PluginViewModel  ←  PluginRepository  ←  D2PluginReposit
 their tests in `commonMain`, runnable on the JVM against a fake — and it means the SDK surface is one
 file to change when the plugin API narrows what it exposes.
 
-## Publish a bundle
+## Install it in the Capture App
 
-Tag with the plugin's version:
+`./verify.sh` leaves the signed bundle and a ready-to-post `plugin-config.json` in
+`plugin/build/outputs/plugin-bundle/`. Serve that directory over HTTP and post the config to your
+server's dataStore under `dhis2AndroidPlugins/config` — the dataStore is the only source of plugin
+configuration, there is no in-app fallback. `CLAUDE.md` has the full loop, including why the port
+matters and when to bump `pluginVersion`.
 
-```bash
-git tag v1.5.0 && git push origin v1.5.0
-```
-
-The release workflow verifies, then attaches the bundle, its checksum and a `plugin-config.json`
-whose `downloadUrl` already points at the release asset. Installing the plugin is posting that one
-file to the server's dataStore.
-
-Bundles built in CI are signed with a throwaway debug key, so their checksum will not match one
-built locally — use the `plugin-config.json` from the release, not a local one. A real publisher
-signs with their own key through `pluginBundle { signing { … } }`.
+Bundles are signed with your local debug key, so a checksum only matches the bundle you actually
+built. A real publisher signs with their own key through `pluginBundle { signing { … } }`.
 
 ## More
 

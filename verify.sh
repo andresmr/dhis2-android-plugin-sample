@@ -2,10 +2,19 @@
 #
 # The definition of done for this project.
 #
+# A script rather than a list in prose, for two reasons: an agent that has to run one command cannot
+# quietly skip half of it, and "done" then means the same thing in every session.
+#
 # Usage:
 #   ./verify.sh            # tests + bundle
-#   ./verify.sh --cold     # same, but from a fresh Gradle home and an empty local Maven repo
+#   ./verify.sh --cold     # same, but from a fresh Gradle home
 #
+# --cold re-resolves every dependency from scratch, so it catches stale local state. It is slow (a
+# few minutes) and worth it after touching settings.gradle.kts or the version catalogue.
+#
+# Neither run can prove the project builds on a machine that has never seen it: plugin-sdk and
+# plugin-sdk-gradle come from Maven Local, published by hand from a Capture App checkout. Until they
+# are published to a real repository, there is no clean-machine check.
 
 set -euo pipefail
 

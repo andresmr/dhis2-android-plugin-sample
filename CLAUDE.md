@@ -179,17 +179,17 @@ plugin scattered with `d2.` calls.
 7. **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
    `plugin/build.gradle.kts` pins `d8Executable`/`apksignerExecutable`, because the bundle plugin
    otherwise takes the newest installed and a different `d8` emits different DEX bytes. With that
-   pinned, CI and a laptop produce an identical `classes.dex`, `MANIFEST.MF` and `.SF` — measured,
+   pinned, two machines produce an identical `classes.dex`, `MANIFEST.MF` and `.SF` — measured,
    not assumed.
 
    What still differs is `META-INF/*.RSA`, the signature block, because it carries the signer's
-   certificate and CI mints a throwaway debug key per run. That is inherent: a signed artefact's
-   bytes depend on the key, and no pin changes it. So **a CI artefact's checksum will not match a
-   local build's**, and a dataStore entry has to use the checksum of the bundle you actually serve.
-   Same key plus same build-tools does reproduce exactly.
+   certificate and each machine has its own debug key. That is inherent: a signed artefact's bytes
+   depend on the key, and no pin changes it. So **a bundle built elsewhere will not match yours**,
+   and a dataStore entry has to use the checksum of the bundle you actually serve. Same key plus
+   same build-tools does reproduce exactly.
 
-   Raising the pin is fine; expect the checksum to move, and CI's `sdkmanager` step must install
-   whatever you raise it to.
+   Raising the pin is fine; expect the checksum to move, and every machine that builds this needs
+   the `build-tools` version you raise it to.
 8. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
    caches by `{id}-{version}.zip`; rebuilding at the same version reuses the
    old cache. Symptom: "my code changes aren't showing."
@@ -320,13 +320,6 @@ So the harness shrinks the device checklist; it does not empty it.
 5. Install the Capture App (`dhis2Debug` variant) and log in. Plugins load when the home screen
    opens.
 
-**Or serve it from a GitHub release instead of a local server.** Tag with the plugin's version
-(`git tag v1.6.0 && git push origin v1.6.0`) and the release workflow attaches the bundle, its
-checksum and a `plugin-config.json` whose `downloadUrl` already points at the asset — so steps 3 and
-4 become "post the config from the release". Slower per iteration, since it needs a tag and a CI run,
-and CI signs with its own throwaway key so that config's checksum only matches *that* asset. Use the
-local server while iterating; use a release to hand the bundle to someone else.
-
 For UI work without a server at all, the `@Preview`s in `MainActivity` render `PluginCard` against
 sample state. For the plugin against real data, `./gradlew :app:installDebug` (see *Development
 harness*).
@@ -342,9 +335,10 @@ harness*).
 
 ## Backlog
 
-- **Publish `plugin-sdk` and `plugin-sdk-gradle` to Maven Central.** Until then every developer and
-  every CI run has to build them from a Capture App checkout, which is the single biggest obstacle
-  to someone else cloning this and getting anywhere.
+- **Publish `plugin-sdk` and `plugin-sdk-gradle` to Maven Central.** Until then every developer has
+  to build them from a Capture App checkout into their own Maven Local, which is the single biggest
+  obstacle to someone else cloning this and getting anywhere — and the reason this repository has no
+  CI: a runner cannot build it. Publishing these is what makes automated verification possible.
 - **Get the DHIS2 SDK out of this template's build files entirely.** A plugin project should declare
   one DHIS2 dependency, `plugin-sdk`, and nothing else. Two changes in the Capture App, then one
   here:
