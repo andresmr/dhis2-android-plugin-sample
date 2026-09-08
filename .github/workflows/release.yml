@@ -57,6 +57,17 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US" \
             -keyalg RSA -keysize 2048 -validity 10000
 
+      - name: Publish plugin-sdk to Maven Local
+        # This project resolves plugin-sdk and its Gradle plugin from Maven Local, so CI has to build
+        # them first — there is no published copy yet. Shallow clone of the branch that carries the
+        # plugin system; the sample cannot configure at all without these two artefacts.
+        run: |
+          git clone --depth 1 --branch poc/plugin-system \
+            https://github.com/dhis2/dhis2-android-capture-app.git /tmp/host
+          cd /tmp/host
+          ./gradlew :plugin-sdk:publishToMavenLocal :plugin-sdk-gradle:publishToMavenLocal --no-daemon
+          echo "published:"; ls ~/.m2/repository/org/dhis2/mobile
+
       - name: Verify
         run: ./verify.sh
 
