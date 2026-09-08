@@ -23,13 +23,3 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
----
-
-Third-party contents
-
-`vendor/maven/` holds pre-built binaries of `org.dhis2.mobile:plugin-sdk` and
-`org.dhis2.mobile:plugin-sdk-gradle`, which are not part of this project and are
-not covered by the licence above. They are vendored only so this project builds
-without a hand-published local artefact, and they are expected to be removed once
-those artefacts are published to a repository — see `vendor/maven/README.md`.

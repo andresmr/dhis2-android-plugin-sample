@@ -157,8 +157,8 @@ Then bump `pluginVersion` in `plugin/build.gradle.kts`. The Capture App caches b
 `{id}-{version}.zip`, so shipping at an unchanged version means a device keeps running the old code —
 which reads exactly like the change not working.
 
-If you touched `settings.gradle.kts` or `vendor/`, run `./verify.sh --cold` too. That is the only run
-that proves the project still builds anywhere but this machine.
+If you touched `settings.gradle.kts`, run `./verify.sh --cold` too — it re-resolves from scratch and
+catches stale local state.
 
 ## Phase 05 — Hand back
 
@@ -223,6 +223,6 @@ On approval:
   finding for the report, not something to smooth over.
 - **Report failures with their output.** If `verify.sh` fails, say what failed and paste the relevant
   lines. A summary that says "mostly working" is worse than useless.
-- **`vendor/maven/` is a temporary bridge.** If a build failure looks like a stale plugin API — a
-  method that should exist but does not — read `vendor/maven/README.md` before assuming your code is
-  wrong.
+- **`plugin-sdk` comes from Maven Local.** If a build failure looks like a stale plugin API — a
+  method that should exist but does not — republish it from a Capture App checkout before assuming
+  your code is wrong. A changed API under an unchanged version leaves a stale copy in `~/.m2`.

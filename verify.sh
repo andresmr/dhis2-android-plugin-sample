@@ -7,11 +7,14 @@
 #
 # Usage:
 #   ./verify.sh            # tests + bundle
-#   ./verify.sh --cold     # same, but from a fresh Gradle home and an empty local Maven repo
+#   ./verify.sh --cold     # same, but from a fresh Gradle home
 #
-# --cold is the only run that proves this project builds somewhere other than this machine. It is
-# slow (a few minutes; it re-downloads everything) and worth it after touching settings.gradle.kts
-# or vendor/.
+# --cold re-resolves every dependency from scratch, so it catches stale local state. It is slow (a
+# few minutes) and worth it after touching settings.gradle.kts or the version catalogue.
+#
+# Neither run can prove the project builds on a machine that has never seen it: plugin-sdk and
+# plugin-sdk-gradle come from Maven Local, published by hand from a Capture App checkout. Until they
+# are published to a real repository, there is no clean-machine check.
 
 set -euo pipefail
 
@@ -26,8 +29,10 @@ if [[ "${1:-}" == "--cold" ]]; then
   COLD_ROOT="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$COLD_ROOT'" EXIT
-  GRADLE_ARGS+=("-g" "$COLD_ROOT/gradle-home" "-Dmaven.repo.local=$COLD_ROOT/m2")
-  echo "→ cold run: fresh Gradle home, empty local Maven repo"
+  # Note: only the Gradle home is thrown away. Overriding maven.repo.local as well would hide
+  # plugin-sdk, which lives there, and nothing would resolve.
+  GRADLE_ARGS+=("-g" "$COLD_ROOT/gradle-home")
+  echo "→ cold run: fresh Gradle home (Maven Local kept — plugin-sdk lives there)"
   echo
 fi
 
