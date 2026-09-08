@@ -10,9 +10,8 @@ and renders a card on the home screen — enrolment and event counts, a few rece
 write.
 
 > **Status: proof of concept.** The plugin API, the bundle format and the injection points may still
-> change. `vendor/maven/` holds pre-built copies of `plugin-sdk` and `plugin-sdk-gradle` because they
-> are not published yet, which is why this project builds with no extra setup — see
-> [`vendor/maven/README.md`](vendor/maven/README.md).
+> change. `plugin-sdk` is not published yet, so it has to be built into your Maven Local from a
+> Capture App checkout before this project will configure — see *Build it* below.
 
 ## Layout
 
@@ -28,14 +27,23 @@ verify.sh  the definition of done
 Needs JDK 17, an Android SDK with `platforms;android-37.0` and `build-tools;36.1.0`, and the
 bundled Gradle 9.5.1 wrapper.
 
+First, publish the plugin API into your local Maven repository from a checkout of the
+[Capture App](https://github.com/dhis2/dhis2-android-capture-app) on the branch carrying the plugin
+system (`poc/plugin-system` at the time of writing):
+
+```bash
+./gradlew :plugin-sdk:publishToMavenLocal :plugin-sdk-gradle:publishToMavenLocal
+```
+
+Then, here:
+
 ```bash
 ./verify.sh
 ```
 
 That runs the unit tests, builds the signed bundle, checks the bundle carries nothing the host
 already owns, and prints the bundle's checksum along with a `plugin-config.json` ready to post to a
-server. `./verify.sh --cold` repeats it from an empty Gradle home and local Maven repository, which
-is the only run that proves the project builds on a machine that has never seen it.
+server. `./verify.sh --cold` repeats it from an empty Gradle home, which catches stale local state.
 
 ## Run it against real data
 

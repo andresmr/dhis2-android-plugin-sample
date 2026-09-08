@@ -39,8 +39,6 @@ can tell you.
 dhis2-android-plugin-sample/
 ├── specs/    # Feature specifications — the input to /plugin-from-spec
 ├── verify.sh # The definition of done
-├── vendor/   # Vendored plugin artefacts so this repo builds standalone (temporary —
-│             # see vendor/maven/README.md for how to remove it)
 ├── app/      # Android application — dev-only preview harness.
 │             # Uses CMP 1.10.3 (same Compose version as :plugin + Capture App).
 │             # A stagePluginAssets task copies :plugin's composeResources into
@@ -295,10 +293,18 @@ So the harness shrinks the device checklist; it does not empty it.
 
 ## Local testing flow
 
-1. Nothing to publish first — the plugin API and its Gradle plugin are vendored under
-   `vendor/maven/`, so this project configures and builds on its own. If a build failure looks like
-   a stale plugin API (a method that should exist but does not), read `vendor/maven/README.md`
-   before assuming your code is wrong.
+1. **Publish the plugin API to Maven Local first.** It is not on Maven Central yet, and this
+   project will not even configure without it — the `id("org.dhis2.mobile.plugin-bundle")` line
+   resolves from there. In a checkout of the Capture App on the branch carrying the plugin system:
+
+   ```bash
+   ./gradlew :plugin-sdk:publishToMavenLocal :plugin-sdk-gradle:publishToMavenLocal
+   ```
+
+   Both, always: the Gradle plugin is what pulls in the matching `plugin-sdk`, and a stale
+   `plugin-sdk-gradle` is invisible from this side — it surfaces as an unrelated
+   dependency-resolution error. Republish after any change to the plugin API, and remember a
+   changed API under an unchanged version leaves a stale copy in `~/.m2`.
 2. `./verify.sh`, or `./gradlew :plugin:buildPluginBundle` directly. `plugin-config.json` beside the bundle is
    the dataStore entry with `version`, `checksum`, `id` and `entryPoint` already filled
    in — the last two come from `pluginBundle { }` in `plugin/build.gradle.kts`.
@@ -336,10 +342,9 @@ harness*).
 
 ## Backlog
 
-- **Publish `plugin-sdk` and `plugin-sdk-gradle` to a real repository, then delete `vendor/`.**
-  They are committed binaries with no upstream: when the plugin API changes, code here compiles
-  against the stale copy and fails on device with `NoSuchMethodError` or `ClassCastException`.
-  `vendor/maven/README.md` has the removal steps.
+- **Publish `plugin-sdk` and `plugin-sdk-gradle` to Maven Central.** Until then every developer and
+  every CI run has to build them from a Capture App checkout, which is the single biggest obstacle
+  to someone else cloning this and getting anywhere.
 - **Get the DHIS2 SDK out of this template's build files entirely.** A plugin project should declare
   one DHIS2 dependency, `plugin-sdk`, and nothing else. Two changes in the Capture App, then one
   here:

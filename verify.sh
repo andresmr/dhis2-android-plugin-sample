@@ -2,16 +2,10 @@
 #
 # The definition of done for this project.
 #
-# A script rather than a list in prose, for two reasons: an agent that has to run one command cannot
-# quietly skip half of it, and "done" then means the same thing in every session.
-#
 # Usage:
 #   ./verify.sh            # tests + bundle
 #   ./verify.sh --cold     # same, but from a fresh Gradle home and an empty local Maven repo
 #
-# --cold is the only run that proves this project builds somewhere other than this machine. It is
-# slow (a few minutes; it re-downloads everything) and worth it after touching settings.gradle.kts
-# or vendor/.
 
 set -euo pipefail
 
@@ -26,8 +20,10 @@ if [[ "${1:-}" == "--cold" ]]; then
   COLD_ROOT="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$COLD_ROOT'" EXIT
-  GRADLE_ARGS+=("-g" "$COLD_ROOT/gradle-home" "-Dmaven.repo.local=$COLD_ROOT/m2")
-  echo "→ cold run: fresh Gradle home, empty local Maven repo"
+  # Note: only the Gradle home is thrown away. Overriding maven.repo.local as well would hide
+  # plugin-sdk, which lives there, and nothing would resolve.
+  GRADLE_ARGS+=("-g" "$COLD_ROOT/gradle-home")
+  echo "→ cold run: fresh Gradle home (Maven Local kept — plugin-sdk lives there)"
   echo
 fi
 
