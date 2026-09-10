@@ -16,7 +16,7 @@ plugins {
 // The only plugin-specific knob. Everything else about the plugin — its id, entry-point class,
 // injection points and data scope — lives in the DHIS2 server dataStore config, which is the
 // single source of truth. The plugin's Kotlin declares none of it.
-version = "1.6.0"
+version = "1.7.0"
 
 kotlin {
     android {

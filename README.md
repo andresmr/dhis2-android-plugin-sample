@@ -2,7 +2,7 @@
 
 A reference plugin for the [DHIS2 Android Capture App](https://github.com/dhis2/dhis2-android-capture-app).
 `ProgramOverviewPlugin` reads a tracker programme through the DHIS2 Android SDK and renders a card on
-the app's home screen — enrolment and event counts, a few enrolled people, and one write.
+the app's home screen: enrolment and event counts, and a few enrolled people.
 
 A plugin is a small Android library that implements `Dhis2Plugin`, is packaged as a signed zip
 bundle, and is rendered inside the Capture App from a server-side configuration.
@@ -28,8 +28,8 @@ constraints, the design system, the backlog — read [`CLAUDE.md`](CLAUDE.md).
 - **A JDK** — any recent one, only to launch the Gradle wrapper. Gradle provisions its own JDK 21
   toolchain (`gradle/gradle-daemon-jvm.properties`), so you do not need 21 installed.
 - **Gradle** — none to install; use the bundled `./gradlew` (9.5.1).
-- **A DHIS2 server you can write to.** The harness signs in and creates an event, so use a
-  development instance, never production.
+- **A DHIS2 server.** The plugin only reads, but the harness signs in and downloads metadata and
+  tracker data, so use a development instance rather than production.
 - **An emulator or a device.** From an emulator, `10.0.2.2` is your host machine.
 - **A Capture App checkout** on the branch carrying the plugin system — `poc/plugin-system` at the
   time of writing. You need it twice: for step 1, and to install the host in step 7.

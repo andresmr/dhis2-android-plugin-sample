@@ -5,10 +5,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.dhis2.mobile.plugin.sample.model.MAX_LISTED_PEOPLE
-import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.repository.PluginRepository
 
 /**
@@ -32,20 +30,6 @@ class PluginViewModel(
         loadSummary()
     }
 
-    fun addEvent(target: WriteTarget) {
-        viewModelScope.launch {
-            _state.update { it.copy(write = WriteState.Writing) }
-
-            val outcome = repository.addEvent(target).fold(
-                onSuccess = { WriteState.Succeeded(it) },
-                onFailure = { WriteState.Failed(it.describe()) },
-            )
-            _state.update { it.copy(write = outcome) }
-
-            // Reload only when something actually changed, so a failure costs no query.
-            if (outcome is WriteState.Succeeded) loadSummary()
-        }
-    }
 
     private fun loadSummary() {
         viewModelScope.launch {
@@ -57,7 +41,7 @@ class PluginViewModel(
                 onSuccess = { SummaryState.Loaded(it.copy(recent = it.recent.take(MAX_LISTED_PEOPLE))) },
                 onFailure = { SummaryState.Failed(it.describe()) },
             )
-            _state.update { it.copy(summary = outcome) }
+            _state.value = PluginUiState(summary = outcome)
         }
     }
 }

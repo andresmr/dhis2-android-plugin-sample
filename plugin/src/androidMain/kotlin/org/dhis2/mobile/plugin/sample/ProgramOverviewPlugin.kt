@@ -50,7 +50,6 @@ class ProgramOverviewPlugin : Dhis2Plugin {
         PluginCard(
             state = state,
             pluginVersion = context.pluginMetadata.version,
-            onAddEvent = viewModel::addEvent,
         )
     }
 }

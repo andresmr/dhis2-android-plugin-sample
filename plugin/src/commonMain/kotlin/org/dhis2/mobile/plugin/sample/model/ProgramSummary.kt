@@ -14,8 +14,6 @@ data class ProgramSummary(
     val enrolledCount: Int,
     val eventCount: Int,
     val recent: List<EnrolledPerson>,
-    /** What the write test would create, or null when no enrollment could be resolved. */
-    val writeTarget: WriteTarget? = null,
 )
 
 /**
@@ -34,10 +32,3 @@ data class EnrolledPerson(
     val displayLabel: String,
 )
 
-/** The event the write test would create — proof that SDK access includes writes. */
-data class WriteTarget(
-    val programUid: String,
-    val enrollmentUid: String,
-    val programStageUid: String,
-    val orgUnitUid: String,
-)

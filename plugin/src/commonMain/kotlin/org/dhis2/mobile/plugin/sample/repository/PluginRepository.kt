@@ -1,7 +1,6 @@
 package org.dhis2.mobile.plugin.sample.repository
 
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
-import org.dhis2.mobile.plugin.sample.model.WriteTarget
 
 /**
  * Everything the plugin needs from DHIS2, in the plugin's own vocabulary.
@@ -22,7 +21,4 @@ interface PluginRepository {
      * resolves one from the server's own metadata. [ProgramSummary.programUid] reports which.
      */
     suspend fun loadSummary(): Result<ProgramSummary>
-
-    /** Creates one event, returning its UID — the simplest proof that writes work too. */
-    suspend fun addEvent(target: WriteTarget): Result<String>
 }

@@ -27,11 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import org.dhis2.mobile.plugin.sample.model.EnrolledPerson
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
-import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.ui.PluginCard
 import org.dhis2.mobile.plugin.sample.ui.PluginUiState
 import org.dhis2.mobile.plugin.sample.ui.SummaryState
-import org.dhis2.mobile.plugin.sample.ui.WriteState
 import org.dhis2.mobile.plugin.sample.ui.theme.PluginSampleTheme
 
 private const val PLUGIN_VERSION = "preview"
@@ -51,12 +49,6 @@ private val SAMPLE = ProgramSummary(
     recent = listOf(
         EnrolledPerson(uid = "sample-person-1", displayLabel = "Alice Morgan"),
         EnrolledPerson(uid = "sample-person-2", displayLabel = "Bilal Khan"),
-    ),
-    writeTarget = WriteTarget(
-        programUid = "sample-programme",
-        enrollmentUid = "sample-enrollment",
-        programStageUid = "sample-stage",
-        orgUnitUid = "sample-org-unit",
     ),
 )
 
@@ -152,17 +144,6 @@ fun FailedPreview() {
     PluginSampleTheme {
         PluginCard(
             state = PluginUiState(summary = SummaryState.Failed("[UNEXPECTED] no such program")),
-            pluginVersion = PLUGIN_VERSION,
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Write succeeded")
-@Composable
-fun WriteSucceededPreview() {
-    PluginSampleTheme {
-        PluginCard(
-            state = LOADED.copy(write = WriteState.Succeeded("Xk9pQ2mLvRt")),
             pluginVersion = PLUGIN_VERSION,
         )
     }

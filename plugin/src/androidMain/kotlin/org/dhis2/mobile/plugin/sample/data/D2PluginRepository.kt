@@ -7,11 +7,9 @@ import org.dhis2.mobile.plugin.sdk.trackedEntityLabeller
 import org.dhis2.mobile.plugin.sample.model.EnrolledPerson
 import org.dhis2.mobile.plugin.sample.model.MAX_LISTED_PEOPLE
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
-import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.repository.PluginRepository
 import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.arch.repositories.scope.RepositoryScope
-import org.hisp.dhis.android.core.event.EventCreateProjection
 import org.hisp.dhis.android.core.maintenance.D2Error
 import org.hisp.dhis.android.core.program.Program
 import org.hisp.dhis.android.core.program.ProgramType
@@ -26,6 +24,11 @@ import org.hisp.dhis.android.core.trackedentity.TrackedEntityInstance
  * Two responsibilities beyond querying: move blocking SDK calls off the main thread, and turn
  * `D2Error` into a message worth showing, since `D2Error` passes nothing to the `Exception`
  * constructor and its `message` is always null.
+ *
+ * Reads only. The plugin API hands over `D2` unrestricted, so a plugin can write exactly as the app
+ * can — `eventModule().events().blockingAdd(…)` and the rest — and this sample once carried a button
+ * proving it. Nothing was learned from keeping the proof around: it is the same SDK either way. See
+ * the git history if you want the shape of it.
  */
 class D2PluginRepository(
     private val d2: D2,
@@ -73,21 +76,9 @@ class D2PluginRepository(
             enrolledCount = enrolled.blockingCount(),
             eventCount = d2.eventModule().events().byProgramUid().eq(programUid).blockingCount(),
             recent = recent.map { it.toPerson(labeller) },
-            writeTarget = writeTarget(programUid),
         )
     }
 
-    override suspend fun addEvent(target: WriteTarget): Result<String> = io {
-        d2.eventModule().events().blockingAdd(
-            EventCreateProjection.create(
-                target.enrollmentUid,
-                target.programUid,
-                target.programStageUid,
-                target.orgUnitUid,
-                null,
-            ),
-        )
-    }
 
     /**
      * The programme this plugin reports on, resolved rather than hardcoded.
@@ -107,27 +98,6 @@ class D2PluginRepository(
             .blockingGet()
             .firstOrNull()
 
-    /** Picks something to write to: the newest enrollment in the program, and its first stage. */
-    private fun writeTarget(programUid: String): WriteTarget? {
-        val enrollment = d2.enrollmentModule().enrollments()
-            .byProgram().eq(programUid)
-            .orderByCreated(RepositoryScope.OrderByDirection.DESC)
-            .blockingGet()
-            .firstOrNull() ?: return null
-
-        val stage = d2.programModule().programStages()
-            .byProgramUid().eq(programUid)
-            .orderBySortOrder(RepositoryScope.OrderByDirection.ASC)
-            .blockingGet()
-            .firstOrNull() ?: return null
-
-        return WriteTarget(
-            programUid = programUid,
-            enrollmentUid = enrollment.uid(),
-            programStageUid = stage.uid(),
-            orgUnitUid = enrollment.organisationUnit() ?: return null,
-        )
-    }
 
     private suspend fun <T> io(block: () -> T): Result<T> =
         withContext(Dispatchers.IO) { catchingD2(block) }

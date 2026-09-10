@@ -284,7 +284,8 @@ first tracker programme ordered by name, which is exactly how `D2PluginRepositor
 it reports on — so the two agree by default. Name a different programme and they will not; that is
 the one case `MainActivity`'s on-screen note is about.
 
-Use a development server: the harness writes as well as reads.
+Use a development server. The plugin reads only — but the harness logs in as a real user and syncs
+a real database onto the device, which is not something to point at production.
 
 Then `./gradlew :app:installDebug`. On first run it instantiates `D2`, logs in, downloads metadata
 and then **tracker data** — metadata alone brings programmes and stages but no enrolments, and a
