@@ -19,7 +19,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PluginSample">
         <activity
-            android:name=".MainActivity"
+            android:name="org.dhis2.mobile.plugin.sample.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.PluginSample">
