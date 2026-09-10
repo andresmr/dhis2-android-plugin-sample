@@ -6,7 +6,7 @@
 # quietly skip half of it, and "done" then means the same thing in every session.
 #
 # Usage:
-#   ./verify.sh            # tests + bundle
+#   ./verify.sh            # spec gate + rule gate + tests + bundle
 #   ./verify.sh --cold     # same, but from a fresh Gradle home
 #
 # --cold re-resolves every dependency from scratch, so it catches stale local state. It is slow (a
@@ -39,12 +39,40 @@ fi
 step() { printf '\n\033[1m→ %s\033[0m\n' "$1"; }
 fail() { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 
-# ---------------------------------------------------------------- 1. unit tests
+# ------------------------------------------------------------- 1. spec ↔ test link
+
+# The project's claim is that a spec is the contract. Before this gate existed the pairing between a
+# scenario and the test asserting it was honour-system, and it had already slipped — half the
+# scenarios in the worked example had no test, and nothing noticed because nothing was looking.
+#
+# Runs first because it is the cheapest check here and the one most likely to be the real answer to
+# "is this done".
+step "Every logic scenario has a test"
+if command -v python3 >/dev/null 2>&1; then
+  python3 tools/check-specs.py || fail "Spec and tests disagree (see above)"
+else
+  echo "  skipped: python3 not on PATH"
+fi
+
+# ------------------------------------------------------------- 2. architecture rules
+
+# CLAUDE.md says it about androidMain: a rule whose only enforcement sits somewhere nothing can
+# reach "is not enforced, it is hoped for". That applies to CLAUDE.md itself, and an audit found
+# three rules the code had quietly stopped following. The mechanical ones are checked here; the rest
+# are labelled in CLAUDE.md as not enforced, which is at least honest.
+step "Architecture rules"
+if command -v python3 >/dev/null 2>&1; then
+  python3 tools/check-rules.py || fail "An architecture rule is broken (see above)"
+else
+  echo "  skipped: python3 not on PATH"
+fi
+
+# ---------------------------------------------------------------- 3. unit tests
 
 step "Unit tests (commonTest + androidHostTest, JVM — no device)"
 ./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} :plugin:testAndroidHostTest
 
-# ---------------------------------------------------------------- 2. the bundle
+# ---------------------------------------------------------------- 4. the bundle
 
 step "Plugin bundle"
 ./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} :plugin:buildPluginBundle
@@ -52,7 +80,7 @@ step "Plugin bundle"
 ZIP="$(find "$BUNDLE_DIR" -maxdepth 1 -name '*.zip' -print -quit 2>/dev/null || true)"
 [[ -n "$ZIP" ]] || fail "No bundle produced in $BUNDLE_DIR"
 
-# ---------------------------------------------------------------- 3. nothing the host owns
+# ---------------------------------------------------------------- 5. nothing the host owns
 
 # The bundle's classes.dex must carry this module's classes and nothing else. A second copy of a
 # host-provided class is what produces ClassCastException / NoSuchMethodError at load time, and it
@@ -72,7 +100,7 @@ else
   echo "  skipped: unzip not on PATH"
 fi
 
-# ---------------------------------------------------------------- 4. what to do with it
+# ---------------------------------------------------------------- 6. what to do with it
 
 step "Ready to install"
 SHA_FILE="$ZIP.sha256"

@@ -32,8 +32,22 @@ specify.
 
 ### `## Logic scenarios`
 
-Given / When / Then, one blank line between scenarios. These become tests in
-`plugin/src/commonTest/` and run on the JVM with no device.
+Given / When / Then, one blank line between scenarios, each preceded by a tag line `@L1`, `@L2`,
+… . These become tests in `plugin/src/commonTest/` and run on the JVM with no device.
+
+**The tag is the contract, and it is checked.** Every logic scenario must be claimed by a test — a
+comment `spec: <this file's name without .md> <id>` — or `./verify.sh` fails before it runs a single
+test. `tools/check-specs.py` is the gate; it also catches a claim pointing at a scenario that no
+longer exists, a scenario added without a tag, and a JVM test claiming a device scenario.
+
+```kotlin
+// spec: example-program-summary L3
+@Test
+fun `carry no people when there are none`() { … }
+```
+
+One test may claim several ids (`spec: my-feature L2, L3`), and several tests may claim one id. What
+cannot happen is a scenario nobody asserts.
 
 A scenario belongs here when **both** halves hold:
 
@@ -46,6 +60,7 @@ Point 2 is the one that catches people out, and it follows from how the tests wo
 string on screen has nothing to assert against.
 
 ```
+@L1
 Given the repository returns a summary with 3 events
 When the card loads
 Then the summary state is Loaded, reporting 3 events
@@ -57,7 +72,7 @@ states, error text, and what survives a failure.
 ### `## Device scenarios`
 
 Given / When / Then for anything needing a real DHIS2 read or write, **and for what is actually
-rendered**. Neither can be automated — see *Why the split* below — so they become a manual checklist
+rendered**, tagged `@D1`, `@D2`, … . Neither can be automated — see *Why the split* below — so they become a manual checklist
 the pipeline prints at the end, and they are the only scenarios a human has to walk through.
 
 Keep them few. Every scenario here is a step someone repeats by hand on every change.

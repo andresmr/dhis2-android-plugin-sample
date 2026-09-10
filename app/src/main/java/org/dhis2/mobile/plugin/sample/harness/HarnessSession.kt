@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.D2Configuration
 import org.hisp.dhis.android.core.D2Manager
+import org.hisp.dhis.android.core.arch.repositories.scope.RepositoryScope
 import org.hisp.dhis.android.core.program.ProgramType
 
 sealed interface HarnessState {
@@ -89,8 +90,12 @@ class HarnessSession(private val context: Context) {
         val configured = BuildConfig.PLUGIN_PROGRAM_UID
         if (configured.isNotBlank()) return configured
 
+        // Ordered the same way D2PluginRepository orders it, so leaving dhis2.programUid blank
+        // downloads the very programme the plugin will resolve. Drop the ordering here and the two
+        // can disagree on a server with several tracker programmes, for no reason a reader could see.
         return d2.programModule().programs()
             .byProgramType().eq(ProgramType.WITH_REGISTRATION)
+            .orderByDisplayName(RepositoryScope.OrderByDirection.ASC)
             .blockingGet()
             .firstOrNull()
             ?.uid()

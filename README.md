@@ -67,10 +67,10 @@ dhis2.password=district
 dhis2.programUid=
 ```
 
-`dhis2.programUid` chooses only which programme the **harness** downloads tracker data for; blank
-picks the first tracker programme. It does not choose what the plugin reads — the plugin currently
-hardcodes the demo Child Programme (`IpHINAT79UW`). If the harness downloads one programme and the
-plugin reads another, the card reports the programme as not found; the harness says so on screen.
+`dhis2.programUid` chooses only which programme the **harness** downloads tracker data for. Leave it
+blank and it picks the first tracker programme by name — the same one the plugin resolves for itself,
+so they agree. The plugin is never told which programme to read: the dataStore config has no field
+for one, so it resolves a tracker programme from the server's metadata.
 
 ### 3. Build and verify
 
@@ -78,7 +78,8 @@ plugin reads another, the card reports the programme as not found; the harness s
 ./verify.sh
 ```
 
-This is the definition of done. It runs the unit tests, builds the signed bundle, checks the zip's
+This is the definition of done. It checks that every logic scenario in `specs/` has a test and that
+the architecture rules hold, runs the unit tests, builds the signed bundle, checks the zip's
 layout (every entry under `android/` or `META-INF/`, and `android/classes.dex` present — the
 class-level check that the bundle carries nothing the host already owns is the Gradle plugin's), and
 prints the bundle path, its checksum, and a ready-to-post `plugin-config.json`.
@@ -157,8 +158,9 @@ key, so only the bundle *you* built matches the checksum *you* posted. A bundle 
 machine will not match, even with the same build-tools: the signature block carries the signer's
 certificate. A real publisher signs with their own key through `pluginBundle { signing { … } }`.
 
-**The card says the programme was not found** — the harness and the plugin are looking at different
-programmes; see step 2.
+**The card says the server has no tracker programme** — the plugin resolves a tracker programme
+(`WITH_REGISTRATION`) from downloaded metadata, so either none is assigned to this user or the first
+sync has not finished.
 
 ## Where to go next
 

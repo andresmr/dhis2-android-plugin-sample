@@ -13,9 +13,6 @@ import org.koin.compose.viewmodel.dsl.viewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.dsl.module
 
-/** The program this sample reports on. Any tracker program with enrollments will do. */
-private const val CHILD_PROGRAMME_UID = "IpHINAT79UW"
-
 /**
  * The plugin's entry point, and deliberately nothing more.
  *
@@ -25,9 +22,11 @@ private const val CHILD_PROGRAMME_UID = "IpHINAT79UW"
  *
  * Lives in `androidMain` because [Dhis2PluginContext.sdk] is `D2` — the DHIS2 *Android* SDK.
  *
- * Note what is absent: no id, no version, no injection points. All of that is the server
- * administrator's to declare in the dataStore config, which the plugin reads back through
- * [Dhis2PluginContext.pluginMetadata] if it needs it.
+ * Note what is absent: no id, no version, no injection points — and no programme UID. All of the
+ * first three are the server administrator's to declare in the dataStore config, which the plugin
+ * reads back through [Dhis2PluginContext.pluginMetadata] if it needs it. The programme is absent for
+ * a different reason: the config has no field for one, so a UID here would be a constant pretending
+ * to be configuration. [D2PluginRepository] resolves it from the server's metadata instead.
  */
 class ProgramOverviewPlugin : Dhis2Plugin {
 
@@ -40,7 +39,7 @@ class ProgramOverviewPlugin : Dhis2Plugin {
      */
     override fun provideKoinModule() = module {
         single<PluginRepository> { D2PluginRepository(get()) }
-        viewModel { PluginViewModel(CHILD_PROGRAMME_UID, get()) }
+        viewModel { PluginViewModel(get()) }
     }
 
     @Composable

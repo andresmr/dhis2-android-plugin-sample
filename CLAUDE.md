@@ -12,8 +12,11 @@ project will configure. See *Local testing flow* below, and `README.md` for the 
    this repo today.
 2. **Build a feature from a spec** with `/plugin-from-spec specs/<file>.md`. It restates the spec and
    stops for approval before writing code, then goes red → green → verified.
-3. **`./verify.sh` is the definition of done.** Unit tests, signed bundle, a check on the bundle's
-   zip layout, and the ready-to-post dataStore config. `--cold` additionally re-resolves every
+3. **`./verify.sh` is the definition of done.** The spec ↔ test gate, unit tests, signed bundle, a
+   check on the bundle's zip layout, and the ready-to-post dataStore config. The gate is what makes
+   "a spec is the contract" true rather than aspirational: every `@L*` scenario must be claimed by a
+   test comment `spec: <slug> <id>`, and `tools/check-specs.py` fails the run when one is not. See
+   `specs/README.md` for the convention. `--cold` additionally re-resolves every
    dependency from a fresh Gradle home, which catches stale local state — it keeps Maven Local,
    because that is where `plugin-sdk` lives, and it is not a clean-machine check. `verify.sh` says
    so itself; there is no clean-machine check here.
@@ -96,35 +99,40 @@ the JVM against a fake. It also keeps the SDK surface in one file, which matters
 iteration of this PoC narrows that access — and one file is a far smaller thing to change than a
 plugin scattered with `d2.` calls.
 
-**Rules.**
+**Rules.** Each is marked **[checked]** when `tools/check-rules.py` enforces it — run by
+`./verify.sh` — and **[prose]** when nothing does. A prose rule is a rule you have to remember; three
+of them had quietly stopped being true before anything was looking, which is why the distinction is
+written down rather than assumed.
 
-1. Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
+1. **[checked]** Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
    `D2PluginRepository` belong in `androidMain`, because `D2` is the Android SDK.
-2. Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
+2. **[checked]** Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
    `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
    real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
    it is the faster loop for pure UI work.
-3. **Stay short.** The host renders the slot in a non-scrolling `Column` above its own program list,
+3. **[checked]** **Stay short.** The host renders the slot in a non-scrolling `Column` above its own program list,
    so height taken here is height taken from the host and anything past the viewport is unreachable.
    `PluginCard` caps itself with `heightIn(max = …)` + `verticalScroll`.
-4. A repository returns `Result`, never throws. An exception escaping into the host composition takes
+4. **[checked]** A repository returns `Result`, never throws. An exception escaping into the host composition takes
    the enclosing screen with it, and Compose cannot express an error boundary around a composable
    call. This means catching `Throwable`, not just `D2Error` — see `io()` and `catchingD2` in
    `D2PluginRepository.kt` (`io()` is private; `catchingD2` is the top-level one the tests reach).
    A repository that only catches the SDK's own error type still lets an unexpected null while
    mapping a result reach the host.
-5. **Count in SQL; materialise only what you show.** `blockingCount()` is a `COUNT(*)`;
+5. **[prose]** **Count in SQL; materialise only what you show.** No grep can settle this one. `blockingCount()` is a `COUNT(*)`;
    `blockingGet()` materialises rows. `ProgramSummary` carries a total beside a capped list for this
    reason. The SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
    `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows.
-6. `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
+6. **[prose]** `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
    the `Exception` constructor, so `Throwable.message` is **always null** — read `errorCode()` and
    `errorDescription()`, or every failure renders as the bare word "D2Error".
 
 ## Commands
 
 ```bash
-./verify.sh                            # tests + bundle + checks — the definition of done
+./verify.sh                            # spec gate + tests + bundle — the definition of done
+python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
+python3 tools/check-rules.py           # the architecture rules marked [checked] below (fast)
 ./verify.sh --cold                     # same, from a fresh Gradle home (Maven Local kept)
 ./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
 ./gradlew :plugin:testAndroidHostTest  # unit tests — commonTest AND androidHostTest, JVM, no device
@@ -133,35 +141,37 @@ plugin scattered with `d2.` calls.
 
 ## Rules (read before editing `plugin/build.gradle.kts`)
 
-1. **`compileOnly` everything host-provided, except `compose.components.resources`.**
+Same marking as above: **[checked]** means `tools/check-rules.py` will fail the build.
+
+1. **[checked] `compileOnly` everything host-provided, except `compose.components.resources`.**
    The Capture App provides Compose/Material3/plugin-sdk at runtime via
    `InMemoryDexClassLoader`'s parent delegation — bundling them causes DEX bloat
    and `ClassCastException`. **But** `compose.components.resources` must be
    `implementation` — it's the CMP plugin's opt-in signal to generate the `Res`
    accessor class. Swap it to `compileOnly` and `Res.*` imports stop resolving.
-2. **The plugin compiles against the DHIS2 SDK, and `settings.gradle.kts` needs two extra
+2. **[enforced by the build — it fails at resolution]** **The plugin compiles against the DHIS2 SDK, and `settings.gradle.kts` needs two extra
    repositories for it.** `Dhis2PluginContext.sdk` is `D2`, so the plugin-bundle Gradle plugin
    injects `org.hisp.dhis:android-core` at the host's version — never declare it yourself. It pulls
    `com.github.dhis2:sms-compression` from JitPack, and the host usually tracks SDK snapshots, so
    both JitPack and the snapshots repo must be in `dependencyResolutionManagement`. Without them the
    build fails at dependency *resolution*, with an error that never mentions the DHIS2 SDK.
-3. **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx `compose`
+3. **[prose]** **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx `compose`
    separately, depending on the latter directly and at a higher version, while CMP brings
    `foundation-layout` transitively at a lower one. Almost everything is identical, which is the
    trap: the first casualty is a *defaulted* overload whose `…$default` synthetic changed.
    `Modifier.weight(1f)` crashed the host with `NoSuchMethodError: weight$default` at composition.
    Prefer layout APIs without default arguments, and note `compose.foundation` is not even declared
    here — it arrives transitively, so its version floats.
-4. **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
+4. **[enforced by the build — AGP 9 refuses the mix]** **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
    not `com.android.library`.** AGP 9 disallows mixing plain Android library
    with KMP.
-5. **Set `compose.resources { packageOfResClass = "…" }` explicitly.** Without
+5. **[prose]** **Set `compose.resources { packageOfResClass = "…" }` explicitly.** Without
    it CMP derives the package from the root project name (which has spaces →
    backtick-escaped imports).
-6. **The plugin declares no identity.** Its id, version, entry point and injection points all live
+6. **[prose]** **The plugin declares no identity.** Its id, version, entry point and injection points all live
    in the server dataStore config. `pluginBundle { pluginId; entryPoint }` only fills in the
    generated `plugin-config.json` for convenience — it reaches neither the bundle nor the host.
-7. **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
+7. **[prose]** **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
    `plugin/build.gradle.kts` pins `d8Executable`/`apksignerExecutable`, because the bundle plugin
    otherwise takes the newest installed and a different `d8` emits different DEX bytes. With that
    pinned, two machines produce an identical `classes.dex`, `MANIFEST.MF` and `.SF` — measured,
@@ -175,7 +185,7 @@ plugin scattered with `d2.` calls.
 
    Raising the pin is fine; expect the checksum to move, and every machine that builds this needs
    the `build-tools` version you raise it to.
-8. **Bump the version to invalidate the device cache.** That is the Gradle `version` assignment near
+8. **[prose]** **Bump the version to invalidate the device cache.** That is the Gradle `version` assignment near
    the top of `plugin/build.gradle.kts` — there is no `pluginVersion` property, and `pluginBundle { }`
    does not carry one. The Capture App caches by `{id}-{version}.zip`; rebuilding at the same version
    reuses the old cache. Symptom: "my code changes aren't showing."
@@ -259,9 +269,10 @@ dhis2.password=<your password>
 dhis2.programUid=                        # optional; blank picks the first tracker programme
 ```
 
-`dhis2.programUid` selects what the **harness downloads**, not what the plugin reads — the plugin
-hardcodes `IpHINAT79UW`. Point them at different programmes and the card reports the programme as
-not found; `MainActivity` says so on screen.
+`dhis2.programUid` selects what the **harness downloads**. Leave it blank and the harness picks the
+first tracker programme ordered by name, which is exactly how `D2PluginRepository` resolves the one
+it reports on — so the two agree by default. Name a different programme and they will not; that is
+the one case `MainActivity`'s on-screen note is about.
 
 Use a development server: the harness writes as well as reads.
 

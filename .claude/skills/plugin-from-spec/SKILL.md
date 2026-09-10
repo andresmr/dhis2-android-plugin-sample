@@ -112,6 +112,19 @@ Write the tests for the logic scenarios in `plugin/src/commonTest/`, following t
 `PluginViewModelTest` — a fake `PluginRepository`, `runTest`, `advanceUntilIdle()` then assert on
 `state.value`.
 
+**Claim each scenario.** Every test carries a comment naming what it asserts:
+
+```kotlin
+// spec: <spec-slug> L3
+@Test
+fun `…`() { … }
+```
+
+`./verify.sh` runs `tools/check-specs.py` before anything else and fails when a logic scenario has
+no claim — so an unwritten test is not something you can forget, and neither is a scenario you
+decided to drop without saying so. Use the ids already in the spec; if a scenario has no `@L*` tag,
+add it in phase 01 with the rest of the spec edits, not here.
+
 Do not assert by counting emissions (`skipItems(n)`). Emission counts change whenever anything else
 in the load path changes, and every test coupled to them breaks together for no real reason. This
 has already happened once in this project.
@@ -151,8 +164,9 @@ contract.
 ./verify.sh
 ```
 
-**Not done until this exits clean.** It runs the unit tests, builds the signed bundle, checks the
-bundle's zip layout, and prints the checksum and the dataStore config.
+**Not done until this exits clean.** It checks every logic scenario has a test, runs the unit tests,
+builds the signed bundle, checks the bundle's zip layout, and prints the checksum and the dataStore
+config.
 
 Then bump the `version` assignment in `plugin/build.gradle.kts` — there is no `pluginVersion`
 property. The Capture App caches bundles by

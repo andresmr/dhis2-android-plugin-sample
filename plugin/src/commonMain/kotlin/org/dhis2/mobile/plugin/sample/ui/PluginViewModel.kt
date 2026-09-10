@@ -21,7 +21,6 @@ import org.dhis2.mobile.plugin.sample.repository.PluginRepository
  * type-checks the cached instance and replaces it on a mismatch. No explicit key is needed.
  */
 class PluginViewModel(
-    private val programUid: String,
     private val repository: PluginRepository,
 ) : ViewModel() {
 
@@ -49,7 +48,7 @@ class PluginViewModel(
 
     private fun loadSummary() {
         viewModelScope.launch {
-            val outcome = repository.loadSummary(programUid).fold(
+            val outcome = repository.loadSummary().fold(
                 onSuccess = { SummaryState.Loaded(it) },
                 onFailure = { SummaryState.Failed(it.describe()) },
             )
