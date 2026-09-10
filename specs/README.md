@@ -4,7 +4,7 @@ One file per feature. A spec is the thing that gets agreed *before* code exists,
 survives the session that wrote it. Write it here, review it, then hand it to
 `/plugin-from-spec specs/<your-file>.md`.
 
-The spec's filename becomes the branch — `specs/overdue-events.md` is built on `spec/overdue-events`
+The spec's filename becomes the branch — `specs/overdue-events.md` would be built on `spec/overdue-events`
 — so name the file after the feature, in words a reviewer would recognise.
 
 **A spec is not finished when you hand it over; it is finished when the pipeline stops asking.**
@@ -14,11 +14,9 @@ the same file would still need the conversation, something it learned is missing
 
 Start from `TEMPLATE.md` — it is the five headings with the guidance inline as comments you delete.
 
-Two complete examples sit beside it:
-
-- `example-program-summary.md` — the plugin that ships in this repo today, written after the fact, so
-  the spec and the code can be read side by side.
-- `overdue-events.md` — specified before its code exists, which is the normal direction.
+One complete example sits beside it: `example-program-summary.md`, the plugin that ships in this
+repo today. It was written after the fact so the spec and the code can be read side by side — the
+normal direction is the other one, spec first.
 
 ## The sections
 
@@ -95,8 +93,8 @@ make them automated.)
 
 What *is* automated is everything the repository does either side of the SDK call: the mapping from
 SDK types to plain models, and the translation of failures. Those are functions, tested in
-`plugin/src/androidHostTest/` against real `Event` and `TrackedEntityInstance` values built through
-the SDK's own builders — no `D2` and no mocks. Only the query itself needs a device, and its failure
+`plugin/src/androidHostTest/` against real `TrackedEntityInstance` and `D2Error` values built
+through the SDK's own builders — no `D2` and no mocks. Only the query itself needs a device, and its failure
 mode is "no rows", which shows up immediately.
 
 This is not a gap in the harness, it is a property of the API, and the format makes it explicit so

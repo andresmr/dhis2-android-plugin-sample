@@ -41,7 +41,7 @@ fail() { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 
 # ---------------------------------------------------------------- 1. unit tests
 
-step "Unit tests (commonTest, JVM — no device)"
+step "Unit tests (commonTest + androidHostTest, JVM — no device)"
 ./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} :plugin:testAndroidHostTest
 
 # ---------------------------------------------------------------- 2. the bundle
