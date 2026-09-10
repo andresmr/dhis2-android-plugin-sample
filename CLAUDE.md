@@ -1,8 +1,9 @@
 # CLAUDE.md — DHIS2 Android plugin sample
 
-Produces a **signed zip bundle** plugin for the DHIS2 Android Capture App. This repo is
-self-contained: everything needed to build, test and package a plugin is here, and nothing refers to
-another checkout.
+Produces a **signed zip bundle** plugin for the DHIS2 Android Capture App. Everything needed to
+build, test and package a plugin is here, with one exception: `plugin-sdk` and `plugin-sdk-gradle`
+are not published, so they have to be built into Maven Local from a Capture App checkout before this
+project will configure. See *Local testing flow* below, and `README.md` for the install path.
 
 ## Start here
 
@@ -11,9 +12,14 @@ another checkout.
    this repo today.
 2. **Build a feature from a spec** with `/plugin-from-spec specs/<file>.md`. It restates the spec and
    stops for approval before writing code, then goes red → green → verified.
-3. **`./verify.sh` is the definition of done.** Unit tests, signed bundle, a check that the bundle
-   carries nothing the host owns, and the ready-to-post dataStore config. `--cold` additionally
-   proves the project builds on a machine that has never seen it.
+3. **`./verify.sh` is the definition of done.** The spec ↔ test gate, unit tests, signed bundle, a
+   check on the bundle's zip layout, and the ready-to-post dataStore config. The gate is what makes
+   "a spec is the contract" true rather than aspirational: every `@L*` scenario must be claimed by a
+   test comment `spec: <slug> <id>`, and `tools/check-specs.py` fails the run when one is not. See
+   `specs/README.md` for the convention. `--cold` additionally re-resolves every
+   dependency from a fresh Gradle home, which catches stale local state — it keeps Maven Local,
+   because that is where `plugin-sdk` lives, and it is not a clean-machine check. `verify.sh` says
+   so itself; there is no clean-machine check here.
 4. **Work happens on a branch, never on the default one.** The pipeline cuts `spec/<slug>` from the
    spec's filename before it edits anything, and commits the implementation only after you have
    reviewed and tried the result — including the device checklist, which is the half no test covers.
@@ -39,20 +45,30 @@ can tell you.
 dhis2-android-plugin-sample/
 ├── specs/    # Feature specifications — the input to /plugin-from-spec
 ├── verify.sh # The definition of done
-├── app/      # Android application — dev-only preview harness.
+├── app/      # Android application — dev-only harness against a real server.
+│   └── src/main/java/…/
+│       ├── MainActivity.kt   # renders the plugin's entry point; also holds the @Previews
+│       ├── harness/          # HarnessSession (D2 + login + sync), HarnessPluginContext,
+│       │                     # PluginHost (in HarnessPluginHost.kt) — the host's Koin container
+│       └── ui/theme/         # Studio template theme
 │             # Uses CMP 1.10.3 (same Compose version as :plugin + Capture App).
 │             # A stagePluginAssets task copies :plugin's composeResources into
 │             # :app's assets at build time.
 └── plugin/   # Kotlin Multiplatform + android.kotlin.multiplatform.library + CMP.
     ├── src/commonMain/kotlin/…/
-    │   ├── model/        # ProgramSummary — plain data, no SDK types
+    │   ├── model/        # ProgramSummary.kt — ProgramSummary, EnrolledPerson,
+    │   │                 # LabelledValue, WriteTarget. Plain data, no SDK types.
     │   ├── repository/   # PluginRepository interface
     │   └── ui/           # PluginUiState, PluginViewModel, PluginCard
-    ├── src/commonTest/   # Unit tests — run on the JVM, no device
+    ├── src/commonTest/       # ViewModel/UI tests against a fake repository — JVM, no device
+    ├── src/androidHostTest/  # Tests of androidMain's top-level mapping and error translation,
+    │                         # built from real SDK values. Also JVM — see Architecture.
     └── src/androidMain/kotlin/…/
         ├── ProgramOverviewPlugin.kt   # entry point: provideKoinModule + content, nothing else
         └── data/         # D2PluginRepository — the only file that sees the SDK
 ```
+
+Both test source sets run under one Gradle task, `:plugin:testAndroidHostTest`.
 
 Only `:plugin`'s output is shipped. `:app` is not.
 
@@ -83,100 +99,79 @@ the JVM against a fake. It also keeps the SDK surface in one file, which matters
 iteration of this PoC narrows that access — and one file is a far smaller thing to change than a
 plugin scattered with `d2.` calls.
 
-**Rules.**
+**Rules.** Each is marked **[checked]** when `tools/check-rules.py` enforces it — run by
+`./verify.sh` — and **[prose]** when nothing does. A prose rule is a rule you have to remember; three
+of them had quietly stopped being true before anything was looking, which is why the distinction is
+written down rather than assumed.
 
-1. Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
+1. **[checked]** Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
    `D2PluginRepository` belong in `androidMain`, because `D2` is the Android SDK.
-2. Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
+2. **[checked]** Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
    `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
    real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
    it is the faster loop for pure UI work.
-3. **Stay short.** The host renders the slot in a non-scrolling `Column` above its own program list,
+3. **[checked]** **Stay short.** The host renders the slot in a non-scrolling `Column` above its own program list,
    so height taken here is height taken from the host and anything past the viewport is unreachable.
    `PluginCard` caps itself with `heightIn(max = …)` + `verticalScroll`.
-4. A repository returns `Result`, never throws. An exception escaping into the host composition takes
+4. **[checked]** A repository returns `Result`, never throws. An exception escaping into the host composition takes
    the enclosing screen with it, and Compose cannot express an error boundary around a composable
-   call. This means catching `Throwable`, not just `D2Error` — see `io()`. A repository that only
-   catches the SDK's own error type still lets an unexpected null while mapping a result reach the
-   host.
-5. **Never label a person with an arbitrary attribute.** A tracked entity's attribute values come
-   back in no particular order, so reading "the first one with a value" produces a row labelled
-   *Female*. Resolve the label from the attributes the **program** marks `displayInList`, in their
-   configured sort order — the same ones the app itself lists a tracked entity under:
-
-   ```kotlin
-   d2.programModule().programTrackedEntityAttributes()
-       .byProgram().eq(programUid)
-       .byDisplayInList().isTrue
-       .orderBySortOrder(RepositoryScope.OrderByDirection.ASC)
-   ```
-
-   Fall back to something a human recognises — an org unit name — never to a UID.
-6. **When the card shows N of many, count in SQL and enrich only the N.** `blockingCount()` is a
-   `COUNT(*)`; `blockingGet()` materialises rows. The cost is rarely the events themselves but what
-   resolving each one drags in: an enrollment, a tracked entity *with attribute values*, an org unit.
-   Order and cap **before** any of that, or a program with hundreds of overdue events reads hundreds
-   of records to render three. `ProgramSummary` and `OverdueSummary` both carry a total beside a
-   capped list for this reason.
-
-   Note the SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
-   `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows. Capping before
-   *enrichment* is where the win actually is.
-7. **Enforce a display budget where a test can reach it.** Capping in the repository is an
-   efficiency measure — it avoids resolving rows that will never be shown — and it lives in
-   `androidMain` behind `D2`, which no unit test can construct. The cap that keeps the card inside
-   its height budget is a *different* promise, made to a host whose column does not scroll, and it
-   belongs in the ViewModel where a fake repository can hand it too many rows and a test can watch
-   what happens. Share the limit from `commonMain` and apply it in both places; the duplication is
-   the point, not an oversight.
-
-   Generally: when a rule matters for correctness and its only enforcement sits in `androidMain`, it
-   is not enforced, it is hoped for.
-8. `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
+   call. This means catching `Throwable`, not just `D2Error` — see `io()` and `catchingD2` in
+   `D2PluginRepository.kt` (`io()` is private; `catchingD2` is the top-level one the tests reach).
+   A repository that only catches the SDK's own error type still lets an unexpected null while
+   mapping a result reach the host.
+5. **[prose]** **Count in SQL; materialise only what you show.** No grep can settle this one. `blockingCount()` is a `COUNT(*)`;
+   `blockingGet()` materialises rows. `ProgramSummary` carries a total beside a capped list for this
+   reason. The SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
+   `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows.
+6. **[prose]** `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
    the `Exception` constructor, so `Throwable.message` is **always null** — read `errorCode()` and
    `errorDescription()`, or every failure renders as the bare word "D2Error".
 
 ## Commands
 
 ```bash
-./verify.sh                            # tests + bundle + checks — the definition of done
-./verify.sh --cold                     # same, from an empty Gradle home and local Maven repo
+./verify.sh                            # spec gate + tests + bundle — the definition of done
+python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
+python3 tools/check-rules.py           # the architecture rules marked [checked] below (fast)
+./verify.sh --cold                     # same, from a fresh Gradle home (Maven Local kept)
 ./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
-./gradlew :plugin:testAndroidHostTest  # unit tests (commonTest, JVM — no device)
-./gradlew :app:installDebug            # preview harness on emulator
+./gradlew :plugin:testAndroidHostTest  # unit tests — commonTest AND androidHostTest, JVM, no device
+./gradlew :app:installDebug            # harness against a real server, on emulator
 ```
 
 ## Rules (read before editing `plugin/build.gradle.kts`)
 
-1. **`compileOnly` everything host-provided, except `compose.components.resources`.**
+Same marking as above: **[checked]** means `tools/check-rules.py` will fail the build.
+
+1. **[checked] `compileOnly` everything host-provided, except `compose.components.resources`.**
    The Capture App provides Compose/Material3/plugin-sdk at runtime via
    `InMemoryDexClassLoader`'s parent delegation — bundling them causes DEX bloat
    and `ClassCastException`. **But** `compose.components.resources` must be
    `implementation` — it's the CMP plugin's opt-in signal to generate the `Res`
    accessor class. Swap it to `compileOnly` and `Res.*` imports stop resolving.
-2. **The plugin compiles against the DHIS2 SDK, and `settings.gradle.kts` needs two extra
+2. **[enforced by the build — it fails at resolution]** **The plugin compiles against the DHIS2 SDK, and `settings.gradle.kts` needs two extra
    repositories for it.** `Dhis2PluginContext.sdk` is `D2`, so the plugin-bundle Gradle plugin
    injects `org.hisp.dhis:android-core` at the host's version — never declare it yourself. It pulls
    `com.github.dhis2:sms-compression` from JitPack, and the host usually tracks SDK snapshots, so
    both JitPack and the snapshots repo must be in `dependencyResolutionManagement`. Without them the
    build fails at dependency *resolution*, with an error that never mentions the DHIS2 SDK.
-3. **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx `compose`
+3. **[prose]** **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx `compose`
    separately, depending on the latter directly and at a higher version, while CMP brings
    `foundation-layout` transitively at a lower one. Almost everything is identical, which is the
    trap: the first casualty is a *defaulted* overload whose `…$default` synthetic changed.
    `Modifier.weight(1f)` crashed the host with `NoSuchMethodError: weight$default` at composition.
    Prefer layout APIs without default arguments, and note `compose.foundation` is not even declared
    here — it arrives transitively, so its version floats.
-4. **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
+4. **[enforced by the build — AGP 9 refuses the mix]** **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
    not `com.android.library`.** AGP 9 disallows mixing plain Android library
    with KMP.
-5. **Set `compose.resources { packageOfResClass = "…" }` explicitly.** Without
+5. **[prose]** **Set `compose.resources { packageOfResClass = "…" }` explicitly.** Without
    it CMP derives the package from the root project name (which has spaces →
    backtick-escaped imports).
-6. **The plugin declares no identity.** Its id, version, entry point and injection points all live
+6. **[prose]** **The plugin declares no identity.** Its id, version, entry point and injection points all live
    in the server dataStore config. `pluginBundle { pluginId; entryPoint }` only fills in the
    generated `plugin-config.json` for convenience — it reaches neither the bundle nor the host.
-7. **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
+7. **[prose]** **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
    `plugin/build.gradle.kts` pins `d8Executable`/`apksignerExecutable`, because the bundle plugin
    otherwise takes the newest installed and a different `d8` emits different DEX bytes. With that
    pinned, two machines produce an identical `classes.dex`, `MANIFEST.MF` and `.SF` — measured,
@@ -190,11 +185,16 @@ plugin scattered with `d2.` calls.
 
    Raising the pin is fine; expect the checksum to move, and every machine that builds this needs
    the `build-tools` version you raise it to.
-8. **Bump `pluginVersion` to invalidate the device cache.** The Capture App
-   caches by `{id}-{version}.zip`; rebuilding at the same version reuses the
-   old cache. Symptom: "my code changes aren't showing."
+8. **[prose]** **Bump the version to invalidate the device cache.** That is the Gradle `version` assignment near
+   the top of `plugin/build.gradle.kts` — there is no `pluginVersion` property, and `pluginBundle { }`
+   does not carry one. The Capture App caches by `{id}-{version}.zip`; rebuilding at the same version
+   reuses the old cache. Symptom: "my code changes aren't showing."
 
 ## Design system
+
+**Not adopted yet — this section describes where the UI should go, not where it is.** `PluginCard`
+uses raw Material 3 today, and `org.hisp.dhis.mobile:designsystem` is declared nowhere in this
+build. Adopting it is in the backlog; what follows is how to do it.
 
 A plugin should look like the app it renders inside. The Capture App carries
 `org.hisp.dhis.mobile:designsystem` on its runtime classpath, so declare it **`compileOnly`** and the
@@ -236,12 +236,12 @@ plugin/src/commonMain/composeResources/
 Access from code:
 
 ```kotlin
-import org.dhis2.mobile.plugin.sample.plugin.generated.resources.Res
-import org.dhis2.mobile.plugin.sample.plugin.generated.resources.plugin_title
+import org.dhis2.mobile.plugin.sample.generated.resources.Res
+import org.dhis2.mobile.plugin.sample.generated.resources.plugin_loading
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.painterResource
 
-Text(stringResource(Res.string.plugin_title))
+Text(stringResource(Res.string.plugin_loading))
 Image(painter = painterResource(Res.drawable.plugin_icon), contentDescription = null)
 ```
 
@@ -262,11 +262,17 @@ Runtime resolution differs by host:
 samples. Configure it in `local.properties`, which is gitignored and never committed:
 
 ```properties
+sdk.dir=<your Android SDK>               # required by :plugin's build-tools pin, not just by AGP
 dhis2.serverUrl=<your server>            # from an emulator, 10.0.2.2 is the host machine
 dhis2.username=<your username>
 dhis2.password=<your password>
 dhis2.programUid=                        # optional; blank picks the first tracker programme
 ```
+
+`dhis2.programUid` selects what the **harness downloads**. Leave it blank and the harness picks the
+first tracker programme ordered by name, which is exactly how `D2PluginRepository` resolves the one
+it reports on — so the two agree by default. Name a different programme and they will not; that is
+the one case `MainActivity`'s on-screen note is about.
 
 Use a development server: the harness writes as well as reads.
 
@@ -288,8 +294,6 @@ container (`PluginHost`) — a harness whose DI differs from the host's proves t
 - androidx Compose version skew — `NoSuchMethodError` reproduces only against the host's versions
 
 So the harness shrinks the device checklist; it does not empty it.
-
-**Use a development server.** The harness writes as well as reads.
 
 ## Local testing flow
 
@@ -317,8 +321,8 @@ So the harness shrinks the device checklist; it does not empty it.
    module, not from the config's `id`). The dataStore is the only source of plugin
    config; there is no in-app fallback. There is no data-scope field to set — the plugin gets the
    SDK unrestricted, so the config only names *which* code to run.
-5. Install the Capture App (`dhis2Debug` variant) and log in. Plugins load when the home screen
-   opens.
+5. Install the Capture App and log in: `./gradlew :app:installDhis2Debug` in that checkout, which
+   installs as `com.dhis2.debug`. Plugins load when the home screen opens.
 
 For UI work without a server at all, the `@Preview`s in `MainActivity` render `PluginCard` against
 sample state. For the plugin against real data, `./gradlew :app:installDebug` (see *Development
@@ -334,6 +338,44 @@ harness*).
 - Have a public no-arg constructor — the host instantiates via reflection.
 
 ## Backlog
+
+These three were written as *rules* until an audit checked them against the code, which does none of
+them. They are real requirements for a plugin that ships; they are listed here because in this repo
+they are not yet met, and a rule the sample violates teaches the wrong thing.
+
+- **Resolve a person's label from the program's `displayInList` attributes.** A tracked entity's
+  attribute values come back in no particular order, so mapping all of them — which
+  `D2PluginRepository.kt` does, building its label map from every `trackedEntityAttributes()` and
+  joining whatever `toPerson` produces — renders rows like *Gender: Female / First name: Filona*,
+  and reading "the first with a value" would render a person labelled *Female*. The app's own
+  answer is the attributes the **program** marks `displayInList`, in configured sort order:
+
+  ```kotlin
+  d2.programModule().programTrackedEntityAttributes()
+      .byProgram().eq(programUid)
+      .byDisplayInList().isTrue
+      .orderBySortOrder(RepositoryScope.OrderByDirection.ASC)
+  ```
+
+  Fall back to something a human recognises — an org unit name — never to a UID.
+- **Cap before enrichment, not after.** `D2PluginRepository.kt` calls
+  `.withTrackedEntityAttributeValues()` on the whole result set and `take(3)` after `blockingGet()`,
+  so a program with hundreds of enrolments resolves hundreds of tracked entities *with their
+  attribute values* to render three. The cost is rarely the rows but what resolving each one drags
+  in: an enrollment, a tracked entity with attribute values, an org unit. Order and cap first.
+- **Enforce the display budget where a test can reach it.** Capping in the repository is an
+  efficiency measure and lives in `androidMain` behind `D2`, which no unit test can construct. The
+  cap that keeps the card inside its height budget is a *different* promise, made to a host whose
+  column does not scroll, and it belongs in the ViewModel where a fake repository can hand it too
+  many rows and a test can watch what happens. Today there are two unshared private `3`s —
+  `MAX_LISTED` in `PluginCard.kt`, `LISTED_LIMIT` in `D2PluginRepository.kt` — and `PluginViewModel`
+  enforces neither. Share the limit from `commonMain` and apply it in both places; the duplication
+  is the point.
+
+  Generally: when a rule matters for correctness and its only enforcement sits in `androidMain`, it
+  is not enforced, it is hoped for.
+- **Adopt the DHIS2 design system.** `PluginCard` uses raw Material 3 and hardcoded hex colours;
+  `org.hisp.dhis.mobile:designsystem` is not declared. See *Design system* above for how.
 
 - **Publish `plugin-sdk` and `plugin-sdk-gradle` to Maven Central.** Until then every developer has
   to build them from a Capture App checkout into their own Maven Local, which is the single biggest

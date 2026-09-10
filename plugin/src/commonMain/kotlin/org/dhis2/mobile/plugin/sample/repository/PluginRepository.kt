@@ -14,7 +14,14 @@ import org.dhis2.mobile.plugin.sample.model.WriteTarget
  * Compose cannot express an error boundary around a composable call.
  */
 interface PluginRepository {
-    suspend fun loadSummary(programUid: String): Result<ProgramSummary>
+    /**
+     * Summarises the tracker programme this plugin reports on.
+     *
+     * Takes no UID on purpose. A plugin is told which *code* to run and nothing else — the dataStore
+     * config carries no programme field — so choosing the programme is the repository's job, and it
+     * resolves one from the server's own metadata. [ProgramSummary.programUid] reports which.
+     */
+    suspend fun loadSummary(): Result<ProgramSummary>
 
     /** Creates one event, returning its UID — the simplest proof that writes work too. */
     suspend fun addEvent(target: WriteTarget): Result<String>

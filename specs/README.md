@@ -4,7 +4,7 @@ One file per feature. A spec is the thing that gets agreed *before* code exists,
 survives the session that wrote it. Write it here, review it, then hand it to
 `/plugin-from-spec specs/<your-file>.md`.
 
-The spec's filename becomes the branch — `specs/overdue-events.md` is built on `spec/overdue-events`
+The spec's filename becomes the branch — `specs/overdue-events.md` would be built on `spec/overdue-events`
 — so name the file after the feature, in words a reviewer would recognise.
 
 **A spec is not finished when you hand it over; it is finished when the pipeline stops asking.**
@@ -14,11 +14,9 @@ the same file would still need the conversation, something it learned is missing
 
 Start from `TEMPLATE.md` — it is the five headings with the guidance inline as comments you delete.
 
-Two complete examples sit beside it:
-
-- `example-program-summary.md` — the plugin that ships in this repo today, written after the fact, so
-  the spec and the code can be read side by side.
-- `overdue-events.md` — specified before its code exists, which is the normal direction.
+One complete example sits beside it: `example-program-summary.md`, the plugin that ships in this
+repo today. It was written after the fact so the spec and the code can be read side by side — the
+normal direction is the other one, spec first.
 
 ## The sections
 
@@ -34,8 +32,22 @@ specify.
 
 ### `## Logic scenarios`
 
-Given / When / Then, one blank line between scenarios. These become tests in
-`plugin/src/commonTest/` and run on the JVM with no device.
+Given / When / Then, one blank line between scenarios, each preceded by a tag line `@L1`, `@L2`,
+… . These become tests in `plugin/src/commonTest/` and run on the JVM with no device.
+
+**The tag is the contract, and it is checked.** Every logic scenario must be claimed by a test — a
+comment `spec: <this file's name without .md> <id>` — or `./verify.sh` fails before it runs a single
+test. `tools/check-specs.py` is the gate; it also catches a claim pointing at a scenario that no
+longer exists, a scenario added without a tag, and a JVM test claiming a device scenario.
+
+```kotlin
+// spec: example-program-summary L3
+@Test
+fun `carry no people when there are none`() { … }
+```
+
+One test may claim several ids (`spec: my-feature L2, L3`), and several tests may claim one id. What
+cannot happen is a scenario nobody asserts.
 
 A scenario belongs here when **both** halves hold:
 
@@ -48,6 +60,7 @@ Point 2 is the one that catches people out, and it follows from how the tests wo
 string on screen has nothing to assert against.
 
 ```
+@L1
 Given the repository returns a summary with 3 events
 When the card loads
 Then the summary state is Loaded, reporting 3 events
@@ -59,7 +72,7 @@ states, error text, and what survives a failure.
 ### `## Device scenarios`
 
 Given / When / Then for anything needing a real DHIS2 read or write, **and for what is actually
-rendered**. Neither can be automated — see *Why the split* below — so they become a manual checklist
+rendered**, tagged `@D1`, `@D2`, … . Neither can be automated — see *Why the split* below — so they become a manual checklist
 the pipeline prints at the end, and they are the only scenarios a human has to walk through.
 
 Keep them few. Every scenario here is a step someone repeats by hand on every change.
@@ -95,8 +108,8 @@ make them automated.)
 
 What *is* automated is everything the repository does either side of the SDK call: the mapping from
 SDK types to plain models, and the translation of failures. Those are functions, tested in
-`plugin/src/androidHostTest/` against real `Event` and `TrackedEntityInstance` values built through
-the SDK's own builders — no `D2` and no mocks. Only the query itself needs a device, and its failure
+`plugin/src/androidHostTest/` against real `TrackedEntityInstance` and `D2Error` values built
+through the SDK's own builders — no `D2` and no mocks. Only the query itself needs a device, and its failure
 mode is "no rows", which shows up immediately.
 
 This is not a gap in the harness, it is a property of the API, and the format makes it explicit so

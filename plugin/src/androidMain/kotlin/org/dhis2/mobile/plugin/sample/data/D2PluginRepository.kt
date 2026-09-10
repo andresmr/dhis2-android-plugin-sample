@@ -11,6 +11,8 @@ import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.arch.repositories.scope.RepositoryScope
 import org.hisp.dhis.android.core.event.EventCreateProjection
 import org.hisp.dhis.android.core.maintenance.D2Error
+import org.hisp.dhis.android.core.program.Program
+import org.hisp.dhis.android.core.program.ProgramType
 import org.hisp.dhis.android.core.trackedentity.TrackedEntityInstance
 
 /** How many enrolled people the summary lists before collapsing the rest. */
@@ -30,8 +32,10 @@ class D2PluginRepository(
     private val d2: D2,
 ) : PluginRepository {
 
-    override suspend fun loadSummary(programUid: String): Result<ProgramSummary> = io {
-        val program = d2.programModule().programs().uid(programUid).blockingGet()
+    override suspend fun loadSummary(): Result<ProgramSummary> = io {
+        val program = trackerProgram()
+            ?: error("This server has no tracker programme for the plugin to report on.")
+        val programUid = program.uid()
 
         val enrolled = d2.trackedEntityModule().trackedEntityInstances()
             .byProgramUids(listOf(programUid))
@@ -46,7 +50,7 @@ class D2PluginRepository(
 
         ProgramSummary(
             programUid = programUid,
-            programName = program?.displayName() ?: programUid,
+            programName = program.displayName() ?: programUid,
             // A COUNT(*) in SQL rather than fetching every row to call .size on it.
             enrolledCount = enrolled.blockingCount(),
             eventCount = d2.eventModule().events().byProgramUid().eq(programUid).blockingCount(),
@@ -66,6 +70,24 @@ class D2PluginRepository(
             ),
         )
     }
+
+    /**
+     * The programme this plugin reports on, resolved rather than hardcoded.
+     *
+     * A UID in the source would be a constant pretending to be configuration: the dataStore config
+     * has no programme field, so there is nothing for it to agree with, and it would make the sample
+     * work on exactly one server — the DHIS2 demo database. Taking the first tracker programme by
+     * name means the plugin runs anywhere, and a template nobody has to edit to try is the point.
+     *
+     * A real plugin with a programme in mind should filter here — `byUid()`, or a code its
+     * administrator agrees on — rather than reintroduce a literal further up.
+     */
+    private fun trackerProgram(): Program? =
+        d2.programModule().programs()
+            .byProgramType().eq(ProgramType.WITH_REGISTRATION)
+            .orderByDisplayName(RepositoryScope.OrderByDirection.ASC)
+            .blockingGet()
+            .firstOrNull()
 
     /** Picks something to write to: the newest enrollment in the program, and its first stage. */
     private fun writeTarget(programUid: String): WriteTarget? {

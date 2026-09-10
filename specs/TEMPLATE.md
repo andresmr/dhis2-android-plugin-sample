@@ -19,8 +19,12 @@
 ## Logic scenarios
 
 <!--
-  Given / When / Then, one blank line between scenarios. These become tests in
-  plugin/src/commonTest/ and run on the JVM with no device.
+  Given / When / Then, one blank line between scenarios, each preceded by a tag line: @L1, @L2, …
+  These become tests in plugin/src/commonTest/ and run on the JVM with no device.
+
+  The tag is checked, not decorative. Every scenario here must be claimed by a test carrying the
+  comment `spec: <this file's name without .md> <id>`, or ./verify.sh fails before running any test.
+  So write the scenario, tag it, and the failing test you owe is named for you.
 
   A scenario belongs here when both halves hold:
 
@@ -45,8 +49,11 @@
 
 <!--
   Given / When / Then for anything needing a real DHIS2 read or write, and for what is actually
-  rendered. These CANNOT be automated: Dhis2PluginContext.sdk is a D2, which cannot be constructed
-  outside a logged-in app, so no test here can exercise the SDK or the composed UI.
+  rendered. Tag these @D1, @D2, … — a D tag is what tells the gate not to demand a test, and a JVM
+  test claiming one is reported as an error.
+
+  These CANNOT be automated: Dhis2PluginContext.sdk is a D2, which cannot be constructed outside a
+  logged-in app, so no test here can exercise the SDK or the composed UI.
 
   They become a manual checklist the pipeline prints at the end. Keep them few — each one is a step
   someone repeats by hand on every change.

@@ -35,25 +35,36 @@ import org.dhis2.mobile.plugin.sample.ui.SummaryState
 import org.dhis2.mobile.plugin.sample.ui.WriteState
 import org.dhis2.mobile.plugin.sample.ui.theme.PluginSampleTheme
 
-private const val PLUGIN_VERSION = "1.0.0"
+private const val PLUGIN_VERSION = "preview"
 
-/** For the `@Preview`s below, which cannot log in. The harness itself uses real data. */
+/**
+ * For the `@Preview`s below, which cannot log in. The harness itself uses real data.
+ *
+ * The uids are deliberately unmistakable rather than real DHIS2 demo uids. A fixture carrying
+ * `IpHINAT79UW` reads as though the value matters, and that is how a hardcoded uid gets copied out
+ * of a preview into something that ships.
+ */
 private val SAMPLE = ProgramSummary(
-    programUid = "IpHINAT79UW",
+    programUid = "sample-programme",
     programName = "Child Programme",
     enrolledCount = 27,
     eventCount = 41,
     recent = listOf(
         EnrolledPerson(
-            uid = "qTgINZ9tOtV",
+            uid = "sample-person-1",
             attributes = listOf(LabelledValue("First name", "Alice"), LabelledValue("Last name", "Morgan")),
         ),
         EnrolledPerson(
-            uid = "rJYd0Wn4p4f",
+            uid = "sample-person-2",
             attributes = listOf(LabelledValue("First name", "Bilal"), LabelledValue("Last name", "Khan")),
         ),
     ),
-    writeTarget = WriteTarget("IpHINAT79UW", "TFEQXHXBiFO", "A03MvHHogjR", "DiszpKrYNg8"),
+    writeTarget = WriteTarget(
+        programUid = "sample-programme",
+        enrollmentUid = "sample-enrollment",
+        programStageUid = "sample-stage",
+        orgUnitUid = "sample-org-unit",
+    ),
 )
 
 private val LOADED = PluginUiState(summary = SummaryState.Loaded(SAMPLE))
@@ -104,8 +115,9 @@ class MainActivity : ComponentActivity() {
                                     title = "Connected",
                                     body = "Downloaded tracker data for programme " +
                                         "${current.programUid}\n" +
-                                        "The plugin chooses its own programme — if the card below says " +
-                                        "the programme was not found, that is the mismatch.",
+                                        "The plugin resolves the first tracker programme by name, " +
+                                        "which is the same one this downloaded — unless " +
+                                        "dhis2.programUid names a different one.",
                                 )
                                 PluginHost(
                                     plugin = ProgramOverviewPlugin(),

@@ -64,7 +64,7 @@ git checkout -b spec/<spec-file-slug>
 - **Never work on the default branch.** If `git status` is not clean, stop and say so — do not stash,
   do not commit someone else's work in progress.
 - Name the branch `spec/<slug>` after the spec file, not after your guess at the feature.
-  `specs/overdue-events.md` → `spec/overdue-events`. The branch and the spec are the same unit of
+  `specs/overdue-events.md` → `spec/overdue-events`, say. The branch and the spec are the same unit of
   work, and the name should make that obvious a month later.
 - Branch from wherever the session already is. In a worktree or a cloud session that may not be the
   default branch, and silently re-pointing it is worse than working from the wrong base visibly.
@@ -112,6 +112,19 @@ Write the tests for the logic scenarios in `plugin/src/commonTest/`, following t
 `PluginViewModelTest` — a fake `PluginRepository`, `runTest`, `advanceUntilIdle()` then assert on
 `state.value`.
 
+**Claim each scenario.** Every test carries a comment naming what it asserts:
+
+```kotlin
+// spec: <spec-slug> L3
+@Test
+fun `…`() { … }
+```
+
+`./verify.sh` runs `tools/check-specs.py` before anything else and fails when a logic scenario has
+no claim — so an unwritten test is not something you can forget, and neither is a scenario you
+decided to drop without saying so. Use the ids already in the spec; if a scenario has no `@L*` tag,
+add it in phase 01 with the rest of the spec edits, not here.
+
 Do not assert by counting emissions (`skipItems(n)`). Emission counts change whenever anything else
 in the load path changes, and every test coupled to them breaks together for no real reason. This
 has already happened once in this project.
@@ -136,9 +149,10 @@ model → PluginRepository (interface) → PluginUiState → PluginViewModel →
 - Composables take plain data and callbacks, never a `Dhis2PluginContext`.
 - Respect the spec's UI budget. The host slot does not scroll.
 
-Prefer DHIS2 design-system components over raw Material 3 so the plugin looks like the app it renders
-inside — see the *Design system* section of `CLAUDE.md` for the reference URLs and the
-`compileOnly` rule.
+Prefer DHIS2 design-system components over raw Material 3 so the plugin looks like the app it
+renders inside — but note the dependency is **not declared in this build yet**, so adopting it means
+declaring it first. See the *Design system* section of `CLAUDE.md` for the reference URLs and the
+`compileOnly` rule, and its entry in the backlog.
 
 Run the tests until green. If a test needs changing to pass, say why in the report — a test edited to
 match the implementation is worth a sentence, because that is how a spec quietly stops being the
@@ -150,10 +164,12 @@ contract.
 ./verify.sh
 ```
 
-**Not done until this exits clean.** It runs the unit tests, builds the signed bundle, checks the
-bundle carries nothing the host owns, and prints the checksum and the dataStore config.
+**Not done until this exits clean.** It checks every logic scenario has a test, runs the unit tests,
+builds the signed bundle, checks the bundle's zip layout, and prints the checksum and the dataStore
+config.
 
-Then bump `pluginVersion` in `plugin/build.gradle.kts`. The Capture App caches bundles by
+Then bump the `version` assignment in `plugin/build.gradle.kts` — there is no `pluginVersion`
+property. The Capture App caches bundles by
 `{id}-{version}.zip`, so shipping at an unchanged version means a device keeps running the old code —
 which reads exactly like the change not working.
 
