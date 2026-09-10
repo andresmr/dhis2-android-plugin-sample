@@ -16,7 +16,7 @@ plugins {
 // The only plugin-specific knob. Everything else about the plugin — its id, entry-point class,
 // injection points and data scope — lives in the DHIS2 server dataStore config, which is the
 // single source of truth. The plugin's Kotlin declares none of it.
-version = "1.5.0"
+version = "1.5.1"
 
 kotlin {
     android {
@@ -41,6 +41,12 @@ kotlin {
                 compileOnly(compose.runtime)
                 compileOnly(compose.ui)
                 compileOnly(compose.material3)
+                // Declared even though `compose.material3` already drags it in transitively, at a
+                // version nothing here chooses. PluginCard imports foundation directly (Column,
+                // verticalScroll, heightIn), and rule 3 is about exactly this: the host declares
+                // androidx `compose` separately and higher, so a defaulted overload compiled
+                // against a floating foundation is how `NoSuchMethodError: weight$default` happened.
+                compileOnly(compose.foundation)
                 // Must be `implementation`: the Compose Resources plugin uses this
                 // declaration as an opt-in signal to generate the `Res` accessor
                 // class. With `compileOnly` the generator is skipped and `Res.string.*`
