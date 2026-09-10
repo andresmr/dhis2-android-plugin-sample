@@ -27,16 +27,16 @@ And the loaded summary names the programme the repository resolved, so nothing a
 repository has to be told which programme to show
 
 @L2
-Given the repository returns a summary with 3 recent people
+Given the repository returns a summary with 3 recent people, each labelled from the attributes the
+programme marks `displayInList`, in the programme's own sort order
 When the card loads
-Then the loaded summary carries those 3 people, each with its attribute labels resolved
-<!-- Not asserted by any test today. -->
+Then the loaded summary carries those 3 people in that order, each under a label a human recognises
+And no person is labelled with a UID
 
 @L3
 Given the repository returns a summary with no recent people
 When the card loads
 Then the loaded summary carries no people
-<!-- Not asserted by any test today. -->
 
 @L4
 Given the repository fails to load the summary with the message "Program not found"
@@ -48,8 +48,6 @@ Given a loaded summary
 When the write succeeds with event UID "abc123"
 Then the write state is Succeeded with "abc123"
 And the summary state is still Loaded
-<!-- Partly asserted: the test uses "newEvent", and checks the summary survives only on the
-     failure path. -->
 
 @L6
 Given a loaded summary
@@ -67,7 +65,17 @@ Then the repository is asked for the summary a second time, so the new event is 
 Given the repository returns a summary with no write target
 When the card loads
 Then the loaded summary carries no write target, so the card offers no write control
-<!-- Not asserted by any test today. -->
+
+@L9
+Given the repository returns a summary with 5 recent people
+When the card loads
+Then the loaded summary carries only 3 — the shared display budget — because the host's column does
+not scroll, and that promise is made to the host rather than by the query
+
+@L10
+Given the repository returns a summary with 2 recent people
+When the card loads
+Then the loaded summary carries both, unchanged
 
 ## Device scenarios
 
@@ -80,8 +88,9 @@ available offline" and "71 event(s) in this program"
 @D2
 Given 36 enrolled and 3 shown
 When I read the card
-Then it shows the 3 rows under their attribute labels, then "… and 33 more" — the number is
-`enrolledCount` minus the rows shown, so it counts everyone not listed, not just the recent people
+Then it shows 3 people by the name the programme lists them under — the same name the app's own
+tracker list shows for each — then "… and 33 more". That number is `enrolledCount` minus the rows
+shown, so it counts everyone not listed, not just the recent people
 
 @D3
 Given a summary with no recent people
@@ -103,6 +112,19 @@ Given the device has synced metadata again since the plugin loaded
 When I return to the home screen
 Then the card renders normally, with no `ClassCastException`
 
+@D7
+Given a programme whose enrolled people have no value for any attribute it marks `displayInList`
+When I read the card
+Then each row shows the org unit's name, and never a UID
+
+@D8
+Given a programme with several hundred enrolments
+When I open the home screen
+Then the card appears without a visible delay, because only the three rows shown are resolved with
+their attribute values
+<!-- No JVM test can observe the shape of a query. What enforces this mechanically is the build's
+     `cap-before-enrichment` rule, from plugin-sdk-gradle. -->
+
 ## Metadata needs
 
 - A tracker program with enrollments and events — `Child Programme` in the DHIS2 demo database works,
@@ -113,13 +135,24 @@ Then the card renders normally, with no `ClassCastException`
   and the control is correctly hidden.
 - The programme is whichever tracker programme sorts first by name, since the plugin resolves rather
   than names one. On the DHIS2 demo database that is not necessarily `Child Programme`.
-- Tracked entity attributes with display names, so rows render under labels rather than UIDs. Note
-  the plugin currently shows *every* attribute in whatever order the SDK returns, not the ones the
-  program marks `displayInList` — see the backlog in `CLAUDE.md`.
+- The programme must mark at least one tracked entity attribute `displayInList`, with a sort order,
+  or every row falls through to the org unit name — which is correct behaviour but makes `@D2`
+  untestable. `Child Programme` marks first and last name.
+- For `@D7`, at least one enrolled person with no value for any of those attributes.
 
 ## UI budget
 
-Capped at 320 dp — it sits above the host's program list and must not push it off screen. The counts and program name are always visible. The recent-people list is capped at three
-rows with an "… and N more" line rather than growing, and the card bounds itself with
-`heightIn(max = …)` plus `verticalScroll` so any overflow scrolls inside the plugin instead of
-pushing the host's content away.
+Capped at 320 dp — it sits above the host's program list and must not push it off screen. The counts
+and program name are always visible. The recent-people list is capped at three rows with an
+"… and N more" line rather than growing, and the card bounds itself with `heightIn(max = …)` plus
+`verticalScroll` so any overflow scrolls inside the plugin instead of pushing the host's content away.
+
+That cap of three is **one constant, shared**, because three different callers make three different
+promises with it:
+
+- `PluginViewModel` keeps the host's non-scrolling column intact. This is the promise to the host,
+  and the only one a JVM test can reach — see `@L9`.
+- `PluginCard` is the backstop for a `@Preview` or a harness that bypasses the ViewModel.
+- `D2PluginRepository` avoids resolving rows nobody will see. An efficiency measure, not a promise.
+
+Two unshared private threes is how the ViewModel came to enforce none of it.

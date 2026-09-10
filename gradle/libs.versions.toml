@@ -9,7 +9,7 @@ activityCompose = "1.13.0"
 kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
-pluginSdk = "0.1.2-SNAPSHOT"
+pluginSdk = "0.1.3-SNAPSHOT"
 # Only the harness app declares the SDK; :plugin gets it from the bundle plugin at the host's
 # version. Keep this equal to what that plugin injects — see CLAUDE.md.
 dhis2AndroidCore = "1.15.0-20260821.111928-77"
