@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.dhis2.mobile.plugin.sample.model.MAX_LISTED_PEOPLE
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
 import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.generated.resources.Res
@@ -39,7 +40,6 @@ import org.dhis2.mobile.plugin.sample.generated.resources.plugin_teis_count
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-private const val MAX_LISTED = 3
 
 private val Muted = Color(0xFF555555)
 private val Bad = Color(0xFFB00020)
@@ -140,13 +140,13 @@ private fun LoadedBody(summary: ProgramSummary) {
     Line(stringResource(Res.string.plugin_teis_count, summary.enrolledCount), Muted)
     Line("${summary.eventCount} event(s) in this program", Muted)
 
-    summary.recent.take(MAX_LISTED).forEach { person ->
+    summary.recent.take(MAX_LISTED_PEOPLE).forEach { person ->
         Spacer(modifier = Modifier.height(2.dp))
-        // Attributes arrive labelled, so this reads "First name: Alice" rather than a bare value
-        // under an unprintable UID.
-        Line("  • " + person.attributes.joinToString(" / ") { "${it.label}: ${it.value}" }, Color(0xFF333333))
+        // Already the name the programme lists this person under — never a UID, and never
+        // whichever attribute the SDK happened to return first.
+        Line("  • " + person.displayLabel, Color(0xFF333333))
     }
-    val remaining = summary.enrolledCount - minOf(summary.recent.size, MAX_LISTED)
+    val remaining = summary.enrolledCount - minOf(summary.recent.size, MAX_LISTED_PEOPLE)
     if (remaining > 0) {
         Line("  " + stringResource(Res.string.plugin_and_more, remaining), Color(0xFF888888))
     }

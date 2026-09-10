@@ -18,16 +18,20 @@ data class ProgramSummary(
     val writeTarget: WriteTarget? = null,
 )
 
-/** One tracked entity, with attributes already resolved to human-readable labels. */
+/**
+ * One tracked entity, already resolved to the name the programme lists it under.
+ *
+ * A name rather than a list of attributes, because that is what the app itself shows for a tracked
+ * entity and a plugin disagreeing with the list the user just tapped through is worse than one
+ * showing nothing. `plugin-sdk`'s `TrackedEntityLabeller` composes it from the attributes the
+ * programme marks `displayInList`, in configured order — never from whichever attribute the SDK
+ * happened to return first, which is how a person came to be labelled *Female*.
+ *
+ * [displayLabel] is never a UID and never empty: the labeller falls back to the org unit's name.
+ */
 data class EnrolledPerson(
     val uid: String,
-    val attributes: List<LabelledValue>,
-)
-
-/** An attribute value and the label to show for it, so nothing renders under a raw UID. */
-data class LabelledValue(
-    val label: String,
-    val value: String,
+    val displayLabel: String,
 )
 
 /** The event the write test would create — proof that SDK access includes writes. */

@@ -88,7 +88,11 @@ commonMain   commonMain      commonMain                        androidMain
 - **ViewModel** — exposes `StateFlow<PluginUiState>`, calls the repository, maps failures into
   state. Never touches `D2`.
 - **Repository interface** — the plugin's own vocabulary, returning `Result` of plain models.
-- **D2PluginRepository** — the *only* place `D2` appears. Its mapping and its error translation are
+- **D2PluginRepository** — the *only* place `D2` appears. Labelling a tracked entity is **not** its
+  job: `plugin-sdk`'s `TrackedEntityLabeller` owns that rule, because a tracked entity's attribute
+  values arrive in no order and the programme's `displayInList` configuration is what decides which
+  ones make a name. Every plugin rendering a person needs it, so none should re-derive it — and no
+  grep could ever check that they got it right, which is exactly why it is a function and not a rule. Its mapping and its error translation are
   top-level functions so they can be tested without a `D2`: see `plugin/src/androidHostTest/`, which
   builds real SDK values through their builders rather than mocking a fluent chain seven links deep.
   What stays untested is the query itself. Moves blocking calls off the main thread
@@ -99,14 +103,15 @@ the JVM against a fake. It also keeps the SDK surface in one file, which matters
 iteration of this PoC narrows that access — and one file is a far smaller thing to change than a
 plugin scattered with `d2.` calls.
 
-**Rules.** Each is marked **[checked]** when `tools/check-rules.py` enforces it — run by
-`./verify.sh` — and **[prose]** when nothing does. A prose rule is a rule you have to remember; three
-of them had quietly stopped being true before anything was looking, which is why the distinction is
-written down rather than assumed.
+**Rules.** Each is marked by what enforces it: **[build]** when `plugin-sdk-gradle`'s
+`checkPluginConventions` does — so every plugin project inherits it and a fork cannot let it rot —
+**[checked]** when this repo's own `tools/check-rules.py` does, and **[prose]** when nothing does. A
+prose rule is a rule you have to remember; three of them had quietly stopped being true before
+anything was looking, which is why the distinction is written down rather than assumed.
 
-1. **[checked]** Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
+1. **[build]** Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
    `D2PluginRepository` belong in `androidMain`, because `D2` is the Android SDK.
-2. **[checked]** Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
+2. **[build]** Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
    `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
    real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
    it is the faster loop for pure UI work.
@@ -119,7 +124,9 @@ written down rather than assumed.
    `D2PluginRepository.kt` (`io()` is private; `catchingD2` is the top-level one the tests reach).
    A repository that only catches the SDK's own error type still lets an unexpected null while
    mapping a result reach the host.
-5. **[prose]** **Count in SQL; materialise only what you show.** No grep can settle this one. `blockingCount()` is a `COUNT(*)`;
+5. **[build, in part]** **Count in SQL; materialise only what you show.** The one shape a grep
+   *can* settle is checked — enriching with `.with…()` and then capping with `take(` — by the
+   build's `cap-before-enrichment` rule. The rest is judgement. `blockingCount()` is a `COUNT(*)`;
    `blockingGet()` materialises rows. `ProgramSummary` carries a total beside a capped list for this
    reason. The SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
    `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows.
@@ -132,7 +139,8 @@ written down rather than assumed.
 ```bash
 ./verify.sh                            # spec gate + tests + bundle — the definition of done
 python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
-python3 tools/check-rules.py           # the architecture rules marked [checked] below (fast)
+python3 tools/check-rules.py           # this sample's own rules, marked [checked] below (fast)
+./gradlew :plugin:checkPluginConventions   # the plugin system's rules, marked [build] below
 ./verify.sh --cold                     # same, from a fresh Gradle home (Maven Local kept)
 ./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
 ./gradlew :plugin:testAndroidHostTest  # unit tests — commonTest AND androidHostTest, JVM, no device
@@ -141,9 +149,11 @@ python3 tools/check-rules.py           # the architecture rules marked [checked]
 
 ## Rules (read before editing `plugin/build.gradle.kts`)
 
-Same marking as above: **[checked]** means `tools/check-rules.py` will fail the build.
+Same marking as above. Note rule 1 is now checked by reading the real source-set
+configurations rather than by regexing this file, so a version-catalog alias or a convention plugin
+cannot slip past it.
 
-1. **[checked] `compileOnly` everything host-provided, except `compose.components.resources`.**
+1. **[build] `compileOnly` everything host-provided, except `compose.components.resources`.**
    The Capture App provides Compose/Material3/plugin-sdk at runtime via
    `InMemoryDexClassLoader`'s parent delegation — bundling them causes DEX bloat
    and `ClassCastException`. **But** `compose.components.resources` must be
@@ -339,43 +349,14 @@ harness*).
 
 ## Backlog
 
-These three were written as *rules* until an audit checked them against the code, which does none of
-them. They are real requirements for a plugin that ships; they are listed here because in this repo
-they are not yet met, and a rule the sample violates teaches the wrong thing.
-
-- **Resolve a person's label from the program's `displayInList` attributes.** A tracked entity's
-  attribute values come back in no particular order, so mapping all of them — which
-  `D2PluginRepository.kt` does, building its label map from every `trackedEntityAttributes()` and
-  joining whatever `toPerson` produces — renders rows like *Gender: Female / First name: Filona*,
-  and reading "the first with a value" would render a person labelled *Female*. The app's own
-  answer is the attributes the **program** marks `displayInList`, in configured sort order:
-
-  ```kotlin
-  d2.programModule().programTrackedEntityAttributes()
-      .byProgram().eq(programUid)
-      .byDisplayInList().isTrue
-      .orderBySortOrder(RepositoryScope.OrderByDirection.ASC)
-  ```
-
-  Fall back to something a human recognises — an org unit name — never to a UID.
-- **Cap before enrichment, not after.** `D2PluginRepository.kt` calls
-  `.withTrackedEntityAttributeValues()` on the whole result set and `take(3)` after `blockingGet()`,
-  so a program with hundreds of enrolments resolves hundreds of tracked entities *with their
-  attribute values* to render three. The cost is rarely the rows but what resolving each one drags
-  in: an enrollment, a tracked entity with attribute values, an org unit. Order and cap first.
-- **Enforce the display budget where a test can reach it.** Capping in the repository is an
-  efficiency measure and lives in `androidMain` behind `D2`, which no unit test can construct. The
-  cap that keeps the card inside its height budget is a *different* promise, made to a host whose
-  column does not scroll, and it belongs in the ViewModel where a fake repository can hand it too
-  many rows and a test can watch what happens. Today there are two unshared private `3`s —
-  `MAX_LISTED` in `PluginCard.kt`, `LISTED_LIMIT` in `D2PluginRepository.kt` — and `PluginViewModel`
-  enforces neither. Share the limit from `commonMain` and apply it in both places; the duplication
-  is the point.
-
-  Generally: when a rule matters for correctness and its only enforcement sits in `androidMain`, it
-  is not enforced, it is hoped for.
 - **Adopt the DHIS2 design system.** `PluginCard` uses raw Material 3 and hardcoded hex colours;
   `org.hisp.dhis.mobile:designsystem` is not declared. See *Design system* above for how.
+- **Move the last two local rules upstream, or accept that they stay local.** `tools/check-rules.py`
+  still checks that `PluginRepository` returns `Result` and that `PluginCard` bounds its height. Both
+  name types this sample invented, so upstream could only find them by growing an interface for
+  plugin authors to implement — a real architectural imposition the plugin system does not currently
+  make. Probably the right answer is that they stay here; worth revisiting if a second plugin
+  repeats them.
 
 - **Publish `plugin-sdk` and `plugin-sdk-gradle` to Maven Central.** Until then every developer has
   to build them from a Capture App checkout into their own Maven Local, which is the single biggest
@@ -385,9 +366,11 @@ they are not yet met, and a rule the sample violates teaches the wrong thing.
   one DHIS2 dependency, `plugin-sdk`, and nothing else. Two changes in the Capture App, then one
   here:
 
-  1. `AndroidPluginWiring` should extend the test runtime classpath from `androidMain`'s
-     `compileOnly`, the way `plugin/build.gradle.kts` does by hand today. Tests of `androidMain` code
-     need the SDK *classes* at runtime; no plugin author should have to know that.
+  1. ~~`AndroidPluginWiring` should extend the test runtime classpath from `androidMain`'s
+     `compileOnly`.~~ **Done** — `AndroidPluginWiring.wireHostTestRuntime` does it, from both
+     `commonMain`'s and `androidMain`'s `compileOnly`, and `plugin/build.gradle.kts` no longer
+     carries the workaround. `commonMain` mattered as much: `plugin-sdk` is declared there, which is
+     what made a JVM test touching a plugin-sdk type die with `NoClassDefFoundError`.
   2. A `plugin-sdk-test` artefact with `api(android-core)`, for `:app` and test source sets — never
      for `:plugin`, which must keep the SDK `compileOnly` or the bundle inspector will flag it, as it
      already flags `koin-core` for being `api` in `plugin-sdk`.

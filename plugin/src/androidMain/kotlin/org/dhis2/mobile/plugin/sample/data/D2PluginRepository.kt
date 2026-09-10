@@ -2,8 +2,10 @@ package org.dhis2.mobile.plugin.sample.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.dhis2.mobile.plugin.sdk.TrackedEntityLabeller
+import org.dhis2.mobile.plugin.sdk.trackedEntityLabeller
 import org.dhis2.mobile.plugin.sample.model.EnrolledPerson
-import org.dhis2.mobile.plugin.sample.model.LabelledValue
+import org.dhis2.mobile.plugin.sample.model.MAX_LISTED_PEOPLE
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
 import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.repository.PluginRepository
@@ -14,9 +16,6 @@ import org.hisp.dhis.android.core.maintenance.D2Error
 import org.hisp.dhis.android.core.program.Program
 import org.hisp.dhis.android.core.program.ProgramType
 import org.hisp.dhis.android.core.trackedentity.TrackedEntityInstance
-
-/** How many enrolled people the summary lists before collapsing the rest. */
-private const val LISTED_LIMIT = 3
 
 /**
  * The only class in this plugin that touches the DHIS2 SDK.
@@ -40,13 +39,32 @@ class D2PluginRepository(
         val enrolled = d2.trackedEntityModule().trackedEntityInstances()
             .byProgramUids(listOf(programUid))
 
-        val recent = enrolled
-            .withTrackedEntityAttributeValues()
+        // Two steps on purpose. Step one orders and caps *bare* rows — no `.with…()` — because the
+        // children appenders are what cost: each row resolved with its attribute values drags in an
+        // enrollment and an org unit too, so enriching everything to show three reads hundreds of
+        // records. The SDK has no synchronous row limit, so all rows are still materialised; what
+        // this buys is that only three are enriched, which is where the cost actually was.
+        val recentUids = enrolled
             .orderByCreated(RepositoryScope.OrderByDirection.DESC)
             .blockingGet()
-            .take(LISTED_LIMIT)
+            .take(MAX_LISTED_PEOPLE)
+            .map { it.uid() }
 
-        val attributeNames = attributeLabels()
+        // Step two enriches exactly those. The ordering has to be re-applied: a uid filter carries
+        // none, and database order is precisely the "no particular order" this change is about.
+        val recent = if (recentUids.isEmpty()) {
+            emptyList()
+        } else {
+            d2.trackedEntityModule().trackedEntityInstances()
+                .byUid().`in`(recentUids)
+                .withTrackedEntityAttributeValues()
+                .orderByCreated(RepositoryScope.OrderByDirection.DESC)
+                .blockingGet()
+        }
+
+        // Resolved once for the programme, then applied to each row — see plugin-sdk. Doing this
+        // by hand is how the card came to read "Gender: Female / First name: Filona".
+        val labeller = d2.trackedEntityLabeller(programUid)
 
         ProgramSummary(
             programUid = programUid,
@@ -54,7 +72,7 @@ class D2PluginRepository(
             // A COUNT(*) in SQL rather than fetching every row to call .size on it.
             enrolledCount = enrolled.blockingCount(),
             eventCount = d2.eventModule().events().byProgramUid().eq(programUid).blockingCount(),
-            recent = recent.map { it.toPerson(attributeNames) },
+            recent = recent.map { it.toPerson(labeller) },
             writeTarget = writeTarget(programUid),
         )
     }
@@ -111,14 +129,6 @@ class D2PluginRepository(
         )
     }
 
-    /** Attribute UID to the label a person should see, so nothing renders under a raw UID. */
-    private fun attributeLabels(): Map<String, String> =
-        d2.trackedEntityModule().trackedEntityAttributes()
-            .blockingGet()
-            .associate { attribute ->
-                attribute.uid() to (attribute.displayFormName() ?: attribute.displayName() ?: attribute.uid())
-            }
-
     private suspend fun <T> io(block: () -> T): Result<T> =
         withContext(Dispatchers.IO) { catchingD2(block) }
 }
@@ -139,15 +149,15 @@ internal fun <T> catchingD2(block: () -> T): Result<T> =
         Result.failure(error)
     }
 
-internal fun TrackedEntityInstance.toPerson(attributeNames: Map<String, String>) = EnrolledPerson(
+/**
+ * The programme's own name for this person, and nothing else the card does not show.
+ *
+ * The labelling rule lives in `plugin-sdk` rather than here: a tracked entity's attribute values
+ * come back in no order, so the programme's `displayInList` configuration is what decides which
+ * ones make a name and in what sequence. Every plugin rendering a tracked entity needs that, so
+ * none of them should have to re-derive it.
+ */
+internal fun TrackedEntityInstance.toPerson(labeller: TrackedEntityLabeller) = EnrolledPerson(
     uid = uid(),
-    attributes = trackedEntityAttributeValues()
-        .orEmpty()
-        .mapNotNull { value ->
-            val attributeUid = value.trackedEntityAttribute()
-            LabelledValue(
-                label = attributeNames[attributeUid] ?: attributeUid,
-                value = value.value() ?: return@mapNotNull null,
-            )
-        },
+    displayLabel = labeller.labelFor(this),
 )

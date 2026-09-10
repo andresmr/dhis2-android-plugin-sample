@@ -6,7 +6,7 @@
 # quietly skip half of it, and "done" then means the same thing in every session.
 #
 # Usage:
-#   ./verify.sh            # spec gate + rule gate + tests + bundle
+#   ./verify.sh            # spec gate + rule gates + tests + bundle
 #   ./verify.sh --cold     # same, but from a fresh Gradle home
 #
 # --cold re-resolves every dependency from scratch, so it catches stale local state. It is slow (a
@@ -54,23 +54,30 @@ else
   echo "  skipped: python3 not on PATH"
 fi
 
-# ------------------------------------------------------------- 2. architecture rules
+# ------------------------------------------------------------- 2. this sample's own rules
 
 # CLAUDE.md says it about androidMain: a rule whose only enforcement sits somewhere nothing can
 # reach "is not enforced, it is hoped for". That applies to CLAUDE.md itself, and an audit found
-# three rules the code had quietly stopped following. The mechanical ones are checked here; the rest
-# are labelled in CLAUDE.md as not enforced, which is at least honest.
-step "Architecture rules"
+# three rules the code had quietly stopped following.
+#
+# Only the rules specific to *this* plugin are checked here. The plugin system's own conventions —
+# the SDK out of shared source, host-provided dependencies compileOnly, rows capped before they are
+# enriched — moved into plugin-sdk-gradle, so every plugin project inherits them by applying the
+# bundle plugin rather than by copying this script. That is step 3.
+step "This sample's own rules"
 if command -v python3 >/dev/null 2>&1; then
-  python3 tools/check-rules.py || fail "An architecture rule is broken (see above)"
+  python3 tools/check-rules.py || fail "A rule of this sample's is broken (see above)"
 else
   echo "  skipped: python3 not on PATH"
 fi
 
-# ---------------------------------------------------------------- 3. unit tests
+# ------------------------------------------- 3. the plugin system's conventions + unit tests
 
-step "Unit tests (commonTest + androidHostTest, JVM — no device)"
-./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} :plugin:testAndroidHostTest
+# One Gradle invocation for both, so there is no second daemon warm-up. checkPluginConventions comes
+# from plugin-sdk-gradle; buildPluginBundle depends on it too, because a gate you can bypass by
+# packaging is not a gate.
+step "Plugin-system conventions + unit tests (commonTest + androidHostTest, JVM — no device)"
+./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} :plugin:checkPluginConventions :plugin:testAndroidHostTest
 
 # ---------------------------------------------------------------- 4. the bundle
 

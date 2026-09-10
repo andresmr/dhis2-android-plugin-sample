@@ -9,7 +9,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.dhis2.mobile.plugin.sample.model.EnrolledPerson
-import org.dhis2.mobile.plugin.sample.model.LabelledValue
+import org.dhis2.mobile.plugin.sample.model.MAX_LISTED_PEOPLE
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
 import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.repository.PluginRepository
@@ -53,10 +53,7 @@ class PluginViewModelTest {
         writeTarget = writeTarget,
     )
 
-    private fun person(name: String) = EnrolledPerson(
-        uid = "tei-$name",
-        attributes = listOf(LabelledValue("First name", name)),
-    )
+    private fun person(name: String) = EnrolledPerson(uid = "tei-$name", displayLabel = name)
 
     /** A fake rather than a mock: it is our own interface, so this reads better than stubbing. */
     private class FakeRepository(
@@ -101,19 +98,17 @@ class PluginViewModelTest {
     // spec: example-program-summary L2
     @Test
     fun `carry the recent people, with their attribute labels`() = runTest(dispatcher) {
-        val people = listOf(person("Filona"), person("Gertrude"), person("Frank"))
+        val people = listOf(person("Filona Ryder"), person("Gertrude Fjordsen"), person("Frank Fjordsen"))
         val repository = FakeRepository(Result.success(summary(recent = people)))
 
         val state = settled(repository).state.value
 
         val loaded = assertIs<SummaryState.Loaded>(state.summary).summary
+        // In the programme's order, not the order the SDK returned values in.
         assertEquals(people, loaded.recent)
-        // The label matters as much as the value: a row rendered under a raw UID is the failure
-        // this carries a LabelledValue to avoid.
-        assertEquals(
-            listOf(LabelledValue("First name", "Filona")),
-            loaded.recent.first().attributes,
-        )
+        assertEquals("Filona Ryder", loaded.recent.first().displayLabel)
+        // The defect this exists to prevent: a UID must never reach a human.
+        loaded.recent.forEach { assertTrue(it.uid !in it.displayLabel) }
     }
 
     // spec: example-program-summary L3
@@ -189,6 +184,33 @@ class PluginViewModelTest {
             // Proof the write landed rather than merely being accepted.
             assertEquals(2, repository.summaryRequests)
         }
+
+    // spec: example-program-summary L9
+    @Test
+    fun `cap the listed people at the shared display budget`() = runTest(dispatcher) {
+        val crowd = List(5) { person("person-$it") }
+        val repository = FakeRepository(Result.success(summary(recent = crowd)))
+
+        val state = settled(repository).state.value
+
+        // The promise is to the host, whose column does not scroll — so it is kept here, where a
+        // fake repository can hand over more rows than the card may show. Capping only in the
+        // repository, behind a D2 no test can build, is how this went unenforced.
+        val listed = assertIs<SummaryState.Loaded>(state.summary).summary.recent
+        assertEquals(MAX_LISTED_PEOPLE, listed.size)
+        assertEquals(crowd.take(MAX_LISTED_PEOPLE), listed)
+    }
+
+    // spec: example-program-summary L10
+    @Test
+    fun `carry every person when there are fewer than the budget`() = runTest(dispatcher) {
+        val few = List(2) { person("person-$it") }
+        val repository = FakeRepository(Result.success(summary(recent = few)))
+
+        val state = settled(repository).state.value
+
+        assertEquals(few, assertIs<SummaryState.Loaded>(state.summary).summary.recent)
+    }
 
     // spec: example-program-summary L8
     @Test

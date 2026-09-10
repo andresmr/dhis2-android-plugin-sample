@@ -16,7 +16,7 @@ plugins {
 // The only plugin-specific knob. Everything else about the plugin — its id, entry-point class,
 // injection points and data scope — lives in the DHIS2 server dataStore config, which is the
 // single source of truth. The plugin's Kotlin declares none of it.
-version = "1.5.2"
+version = "1.6.0"
 
 kotlin {
     android {
@@ -116,15 +116,11 @@ pluginBundle {
     apksignerExecutable = File(pinnedBuildTools, "apksigner")
 }
 
-// Tests of androidMain code need the SDK *classes* at runtime. It is compileOnly for the plugin —
-// the Capture App supplies it through its class loader — so it is on the compile classpath but not
-// the runtime one, and a JVM test that builds a real D2Error dies with NoClassDefFoundError.
-//
-// Extending rather than declaring it: the version stays wherever the bundle plugin injected it, so
-// there is nothing here to keep equal to the host by hand.
-configurations.named("androidHostTestRuntimeOnly") {
-    extendsFrom(configurations.getByName("androidMainCompileOnly"))
-}
+// Note what is NOT here any more: the wiring that puts compileOnly dependencies on the JVM test
+// runtime classpath. `plugin-sdk` and `android-core` are compileOnly because the host provides them,
+// so a JVM test touching either used to die with NoClassDefFoundError until this file undid that by
+// hand. The plugin-bundle plugin does it now — it is the plugin system's arrangement, so undoing it
+// for tests is the plugin system's job, not every plugin author's.
 
 compose.resources {
     // Override default (which derives from the root project name — gives an ugly
