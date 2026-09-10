@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Enforce the architecture rules that can be enforced.
+"""Enforce the architecture rules that are this sample's own.
+
+Two of the five checks that used to live here moved upstream into `plugin-sdk-gradle`, where every
+plugin project gets them by applying the bundle plugin instead of copying a script: the SDK kept out
+of shared source, and host-provided dependencies declared `compileOnly`. A third rule joined them
+there, cap-before-enrichment, which nothing here ever checked. Run them with
+`./gradlew :plugin:checkPluginConventions` — `./verify.sh` does.
+
+What stays here is what upstream has no business knowing: `PluginRepository` and `PluginCard` are
+types this sample invented, and the plugin system should not grow an interface for plugin authors to
+implement just so a rule can look for it. That is the line — a convention of the *plugin system*
+belongs in the build; a convention of *this plugin* belongs in this repo.
+
+Original note, still true of what is left:
 
 CLAUDE.md says it plainly about `androidMain`: "when a rule matters for correctness and its only
 enforcement sits [somewhere no test can reach], it is not enforced, it is hoped for." That applies
@@ -50,21 +63,14 @@ def kotlin_under(directory):
     return sorted(directory.rglob("*.kt")) if directory.is_dir() else []
 
 
-def check_sdk_is_in_one_place(failures):
-    """Architecture rule 1: only androidMain may see the SDK, because `D2` is the Android SDK.
+def check_sdk_is_in_one_file(failures):
+    """The sample's own choice: the SDK appears in exactly the two files we nominated.
 
-    This is the load-bearing one. It is what keeps state, UI and their tests on the JVM, and what
-    makes the next iteration — narrowing the plugin's SDK access — a one-file change.
+    The *generic* half of this — never in commonMain or commonTest — moved upstream to
+    `checkPluginConventions`, because it is a property of the plugin system rather than of this
+    repo. What is left is a list of filenames only this repo can have an opinion about.
     """
     sdk = re.compile(r"\borg\.hisp\.dhis\b")
-    for directory in (COMMON_MAIN, COMMON_TEST):
-        for path in kotlin_under(directory):
-            for number, line in lines_matching(path, sdk):
-                failures.append(
-                    f"{path}:{number}: the DHIS2 SDK is only allowed in androidMain — {line}"
-                )
-
-    # And within androidMain, in exactly one file, so the surface stays one file to change.
     seeing = [
         path for path in kotlin_under(ANDROID_MAIN)
         if lines_matching(path, sdk)
@@ -78,19 +84,6 @@ def check_sdk_is_in_one_place(failures):
             failures.append(
                 f"{path}: a new file sees the SDK. Keep `D2` behind PluginRepository, or add this "
                 f"file to `allowed` in tools/check-rules.py and say why in the commit"
-            )
-
-
-def check_composables_take_plain_data(failures):
-    """Architecture rule 2: a composable never takes a `Dhis2PluginContext`.
-
-    That is what lets @Preview render the real UI with no server.
-    """
-    context = re.compile(r"\bDhis2PluginContext\b")
-    for path in kotlin_under(COMMON_MAIN):
-        for number, line in lines_matching(path, context):
-            failures.append(
-                f"{path}:{number}: commonMain must not reference Dhis2PluginContext — {line}"
             )
 
 
@@ -125,51 +118,12 @@ def check_card_bounds_its_height(failures):
             failures.append(f"{path}: PluginCard {why} — no `{needed}` found")
 
 
-def check_host_provided_deps_are_compile_only(failures):
-    """Build rule 1: `compileOnly` everything host-provided, except compose.components.resources.
-
-    Bundling a class the host already owns is what produces ClassCastException at load time. The one
-    exception is the CMP plugin's opt-in signal for generating `Res`, which must be `implementation`
-    or `Res.*` stops resolving.
-    """
-    if not BUILD_FILE.is_file():
-        failures.append(f"{BUILD_FILE}: missing")
-        return
-
-    code = code_of(BUILD_FILE)
-    # Only the commonMain dependencies block — commonTest deliberately uses real dependencies,
-    # because a unit test has no host to borrow classes from.
-    block = re.search(r"val commonMain by getting \{(.*?)\n        \}", code, re.S)
-    if not block:
-        failures.append(f"{BUILD_FILE}: cannot find the commonMain source set to check")
-        return
-
-    host_provided = re.compile(r"\b(compose|libs)\.")
-    for raw in block.group(1).splitlines():
-        line = raw.strip()
-        if not host_provided.search(line):
-            continue
-        is_resources = "compose.components.resources" in line
-        if is_resources:
-            if not line.startswith("implementation("):
-                failures.append(
-                    f"{BUILD_FILE}: compose.components.resources must be `implementation` — it is "
-                    f"the CMP plugin's opt-in signal for generating Res — got: {line}"
-                )
-        elif not line.startswith("compileOnly("):
-            failures.append(
-                f"{BUILD_FILE}: host-provided dependencies are compileOnly — got: {line}"
-            )
-
-
 def main():
     failures = []
     checks = (
-        check_sdk_is_in_one_place,
-        check_composables_take_plain_data,
+        check_sdk_is_in_one_file,
         check_repository_returns_result,
         check_card_bounds_its_height,
-        check_host_provided_deps_are_compile_only,
     )
     for check in checks:
         check(failures)
@@ -180,8 +134,10 @@ def main():
             print(f"    {failure}")
         return 1
 
-    print(f"  {len(checks)} rule(s) checked: SDK confined to androidMain, composables take plain "
-          f"data, repository returns Result, card bounds its height, host deps compileOnly")
+    print(
+        f"  {len(checks)} sample rule(s) checked: SDK in one file, repository returns Result, "
+        f"card bounds its height  (the plugin system's own rules: checkPluginConventions)"
+    )
     return 0
 
 

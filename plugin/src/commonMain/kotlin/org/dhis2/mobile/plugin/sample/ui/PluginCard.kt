@@ -2,7 +2,6 @@ package org.dhis2.mobile.plugin.sample.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,8 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -28,8 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.dhis2.mobile.plugin.sample.model.MAX_LISTED_PEOPLE
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
-import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.generated.resources.Res
 import org.dhis2.mobile.plugin.sample.generated.resources.plugin_and_more
 import org.dhis2.mobile.plugin.sample.generated.resources.plugin_error_prefix
@@ -39,11 +36,9 @@ import org.dhis2.mobile.plugin.sample.generated.resources.plugin_teis_count
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-private const val MAX_LISTED = 3
 
 private val Muted = Color(0xFF555555)
 private val Bad = Color(0xFFB00020)
-private val Good = Color(0xFF1B5E20)
 
 /**
  * The plugin's whole UI, as a function of [state] alone.
@@ -61,7 +56,6 @@ fun PluginCard(
     state: PluginUiState,
     pluginVersion: String,
     modifier: Modifier = Modifier,
-    onAddEvent: (WriteTarget) -> Unit = {},
 ) {
     Card(
         modifier = modifier
@@ -80,13 +74,6 @@ fun PluginCard(
             TitleRow(pluginVersion, state.summary)
             Spacer(modifier = Modifier.height(8.dp))
             Body(state.summary)
-
-            val target = (state.summary as? SummaryState.Loaded)?.summary?.writeTarget
-            if (target != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Actions(target = target, writeState = state.write, onAddEvent = onAddEvent)
-            }
-            WriteOutcome(state.write)
         }
     }
 }
@@ -140,51 +127,19 @@ private fun LoadedBody(summary: ProgramSummary) {
     Line(stringResource(Res.string.plugin_teis_count, summary.enrolledCount), Muted)
     Line("${summary.eventCount} event(s) in this program", Muted)
 
-    summary.recent.take(MAX_LISTED).forEach { person ->
+    summary.recent.take(MAX_LISTED_PEOPLE).forEach { person ->
         Spacer(modifier = Modifier.height(2.dp))
-        // Attributes arrive labelled, so this reads "First name: Alice" rather than a bare value
-        // under an unprintable UID.
-        Line("  • " + person.attributes.joinToString(" / ") { "${it.label}: ${it.value}" }, Color(0xFF333333))
+        // Already the name the programme lists this person under — never a UID, and never
+        // whichever attribute the SDK happened to return first.
+        Line("  • " + person.displayLabel, Color(0xFF333333))
     }
-    val remaining = summary.enrolledCount - minOf(summary.recent.size, MAX_LISTED)
+    val remaining = summary.enrolledCount - minOf(summary.recent.size, MAX_LISTED_PEOPLE)
     if (remaining > 0) {
         Line("  " + stringResource(Res.string.plugin_and_more, remaining), Color(0xFF888888))
     }
 }
 
-@Composable
-private fun Actions(
-    target: WriteTarget,
-    writeState: WriteState,
-    onAddEvent: (WriteTarget) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Deliberately not using Modifier.weight(): the plugin compiles against the foundation
-        // version Compose Multiplatform brings, while the host pins androidx Compose higher, and
-        // defaulted overloads like weight() differ between them — it fails at composition with
-        // NoSuchMethodError: weight$default. Sizing to content needs no defaulted RowScope API.
-        Button(
-            onClick = { onAddEvent(target) },
-            enabled = writeState !is WriteState.Writing,
-            colors = ButtonDefaults.buttonColors(containerColor = Good),
-        ) {
-            Text(text = "Write test: add an event", maxLines = 1)
-        }
-    }
-}
 
-@Composable
-private fun WriteOutcome(state: WriteState) {
-    when (state) {
-        is WriteState.Idle -> Unit
-        is WriteState.Writing -> Line("Writing…", Muted)
-        is WriteState.Succeeded -> Line("Created event ${state.eventUid}", Good)
-        is WriteState.Failed -> Line("Write failed: ${state.message}", Bad)
-    }
-}
 
 /** Every one-line row in this card, so spacing and type stay consistent. */
 @Composable

@@ -9,16 +9,14 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.dhis2.mobile.plugin.sample.model.EnrolledPerson
-import org.dhis2.mobile.plugin.sample.model.LabelledValue
+import org.dhis2.mobile.plugin.sample.model.MAX_LISTED_PEOPLE
 import org.dhis2.mobile.plugin.sample.model.ProgramSummary
-import org.dhis2.mobile.plugin.sample.model.WriteTarget
 import org.dhis2.mobile.plugin.sample.repository.PluginRepository
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -38,30 +36,22 @@ class PluginViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val programUid = "resolved-programme"
-    private val target = WriteTarget(programUid, "enrollment", "stage", "orgUnit")
-
     /** The counts are the spec's: "36 enrolled and 71 events". */
     private fun summary(
         recent: List<EnrolledPerson> = emptyList(),
-        writeTarget: WriteTarget? = target,
     ) = ProgramSummary(
         programUid = programUid,
         programName = "Child Programme",
         enrolledCount = 36,
         eventCount = 71,
         recent = recent,
-        writeTarget = writeTarget,
     )
 
-    private fun person(name: String) = EnrolledPerson(
-        uid = "tei-$name",
-        attributes = listOf(LabelledValue("First name", name)),
-    )
+    private fun person(name: String) = EnrolledPerson(uid = "tei-$name", displayLabel = name)
 
     /** A fake rather than a mock: it is our own interface, so this reads better than stubbing. */
     private class FakeRepository(
         var summaryResult: Result<ProgramSummary>,
-        var writeResult: Result<String> = Result.success("newEvent"),
     ) : PluginRepository {
         var summaryRequests = 0
 
@@ -69,8 +59,6 @@ class PluginViewModelTest {
             summaryRequests++
             return summaryResult
         }
-
-        override suspend fun addEvent(target: WriteTarget) = writeResult
     }
 
     private fun TestScope.settled(repository: PluginRepository) =
@@ -101,19 +89,17 @@ class PluginViewModelTest {
     // spec: example-program-summary L2
     @Test
     fun `carry the recent people, with their attribute labels`() = runTest(dispatcher) {
-        val people = listOf(person("Filona"), person("Gertrude"), person("Frank"))
+        val people = listOf(person("Filona Ryder"), person("Gertrude Fjordsen"), person("Frank Fjordsen"))
         val repository = FakeRepository(Result.success(summary(recent = people)))
 
         val state = settled(repository).state.value
 
         val loaded = assertIs<SummaryState.Loaded>(state.summary).summary
+        // In the programme's order, not the order the SDK returned values in.
         assertEquals(people, loaded.recent)
-        // The label matters as much as the value: a row rendered under a raw UID is the failure
-        // this carries a LabelledValue to avoid.
-        assertEquals(
-            listOf(LabelledValue("First name", "Filona")),
-            loaded.recent.first().attributes,
-        )
+        assertEquals("Filona Ryder", loaded.recent.first().displayLabel)
+        // The defect this exists to prevent: a UID must never reach a human.
+        loaded.recent.forEach { assertTrue(it.uid !in it.displayLabel) }
     }
 
     // spec: example-program-summary L3
@@ -138,66 +124,34 @@ class PluginViewModelTest {
         assertEquals("Program not found", assertIs<SummaryState.Failed>(state.summary).message)
     }
 
+
+
+
     // spec: example-program-summary L5
     @Test
-    fun `report the new event's uid, and keep the summary loaded`() = runTest(dispatcher) {
-        val repository = FakeRepository(
-            Result.success(summary()),
-            writeResult = Result.success("abc123"),
-        )
-        val viewModel = settled(repository)
+    fun `cap the listed people at the shared display budget`() = runTest(dispatcher) {
+        val crowd = List(5) { person("person-$it") }
+        val repository = FakeRepository(Result.success(summary(recent = crowd)))
 
-        viewModel.addEvent(target)
-        advanceUntilIdle()
+        val state = settled(repository).state.value
 
-        val state = viewModel.state.value
-        assertEquals("abc123", assertIs<WriteState.Succeeded>(state.write).eventUid)
-        assertIs<SummaryState.Loaded>(state.summary)
+        // The promise is to the host, whose column does not scroll — so it is kept here, where a
+        // fake repository can hand over more rows than the card may show. Capping only in the
+        // repository, behind a D2 no test can build, is how this went unenforced.
+        val listed = assertIs<SummaryState.Loaded>(state.summary).summary.recent
+        assertEquals(MAX_LISTED_PEOPLE, listed.size)
+        assertEquals(crowd.take(MAX_LISTED_PEOPLE), listed)
     }
 
     // spec: example-program-summary L6
     @Test
-    fun `keep the summary on screen when a write fails`() = runTest(dispatcher) {
-        val repository = FakeRepository(
-            Result.success(summary()),
-            writeResult = Result.failure(IllegalStateException("Write refused")),
-        )
-        val viewModel = settled(repository)
-
-        viewModel.addEvent(target)
-        advanceUntilIdle()
-
-        val state = viewModel.state.value
-        assertEquals("Write refused", assertIs<WriteState.Failed>(state.write).message)
-        // A failed write is not a page-level failure.
-        assertIs<SummaryState.Loaded>(state.summary)
-        // Nothing changed, so nothing is re-queried.
-        assertEquals(1, repository.summaryRequests)
-    }
-
-    // spec: example-program-summary L7
-    @Test
-    fun `reload the summary after a successful write, so the new event is counted`() =
-        runTest(dispatcher) {
-            val repository = FakeRepository(Result.success(summary()))
-            val viewModel = settled(repository)
-
-            viewModel.addEvent(target)
-            advanceUntilIdle()
-
-            assertIs<WriteState.Succeeded>(viewModel.state.value.write)
-            // Proof the write landed rather than merely being accepted.
-            assertEquals(2, repository.summaryRequests)
-        }
-
-    // spec: example-program-summary L8
-    @Test
-    fun `carry no write target when none could be resolved`() = runTest(dispatcher) {
-        val repository = FakeRepository(Result.success(summary(writeTarget = null)))
+    fun `carry every person when there are fewer than the budget`() = runTest(dispatcher) {
+        val few = List(2) { person("person-$it") }
+        val repository = FakeRepository(Result.success(summary(recent = few)))
 
         val state = settled(repository).state.value
 
-        // The card reads this to decide whether to offer the write control at all.
-        assertNull(assertIs<SummaryState.Loaded>(state.summary).summary.writeTarget)
+        assertEquals(few, assertIs<SummaryState.Loaded>(state.summary).summary.recent)
     }
+
 }
