@@ -1,8 +1,9 @@
 # Specs
 
 One file per feature. A spec is the thing that gets agreed *before* code exists, and the thing that
-survives the session that wrote it. Write it here, review it, then hand it to
-`/plugin-from-spec specs/<your-file>.md`.
+survives the session that wrote it. Write it here, review it, then build it by following
+[`docs/workflows/plugin-from-spec.md`](../docs/workflows/plugin-from-spec.md) — by hand, or with
+whatever agent you use. In Claude Code that is `/plugin-from-spec specs/<your-file>.md`.
 
 The spec's filename becomes the branch — `specs/overdue-events.md` would be built on `spec/overdue-events`
 — so name the file after the feature, in words a reviewer would recognise.
@@ -14,9 +15,14 @@ the same file would still need the conversation, something it learned is missing
 
 Start from `TEMPLATE.md` — it is the five headings with the guidance inline as comments you delete.
 
-One complete example sits beside it: `example-program-summary.md`, the plugin that ships in this
-repo today. It was written after the fact so the spec and the code can be read side by side — the
-normal direction is the other one, spec first.
+`first-card.md` is the seed's own spec: two logic scenarios and two device ones, small enough to
+read in a minute and meant to be replaced rather than extended.
+
+One complete example lives with the plugin it describes, in
+[`examples/program-summary/specs/`](../examples/program-summary/specs). It was written after the
+fact so the spec and the code can be read side by side — the normal direction is the other one, spec
+first. Note that an example's specs are checked against *its* tests
+(`tools/check-specs.py --module examples/program-summary`), never against yours.
 
 ## The sections
 
@@ -51,7 +57,7 @@ cannot happen is a scenario nobody asserts.
 
 A scenario belongs here when **both** halves hold:
 
-1. Its `Given` can be arranged by handing the ViewModel a fake `PluginRepository`.
+1. Its `Given` can be arranged by handing the ViewModel a fake repository.
 2. Its `Then` names something the **UI state** exposes — a case of a sealed interface, a value, a
    count, a message — or a call the repository should or should not have received.
 
@@ -117,8 +123,8 @@ that:
 
 - a spec never carries an acceptance criterion that nothing can check;
 - the report at the end can say honestly which scenarios are proven and which are still open;
-- the pressure lands where it belongs — on keeping SDK access behind
-  `PluginRepository` so that *everything above it* is a logic scenario.
+- the pressure lands where it belongs — on keeping SDK access behind the repository interface so
+  that *everything above it* is a logic scenario.
 
 The practical consequence when writing a spec: if a scenario you want to automate keeps needing a
 device, the design is probably reaching into the SDK too far up. Push the SDK call down into the

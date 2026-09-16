@@ -1,39 +1,64 @@
-# AGENTS.md — DHIS2 Android plugin sample
+# AGENTS.md — DHIS2 Android plugin template
 
-Produces a **signed zip bundle** plugin for the DHIS2 Android Capture App. Everything needed to
-build, test and package a plugin is here, with one exception: `plugin-sdk` and `plugin-sdk-gradle`
-are not published, so they have to be built into Maven Local from a Capture App checkout before this
-project will configure. See *Local testing flow* below, and `README.md` for the install path.
+**This is the working reference for this repository, whichever agent or person is reading it.**
+`CLAUDE.md`, `.cursorrules` and `.github/copilot-instructions.md` are one-line pointers here; there
+is one copy, so there is nothing to drift.
+
+A **template** for building plugins for the DHIS2 Android Capture App. A plugin is a small Android
+library implementing `Dhis2Plugin`, packaged as a **signed zip bundle**, rendered inside the Capture
+App from a server-side configuration. Fork this, run `./init.sh`, and write specs.
+
+Everything needed to build, test and package a plugin is here, with one exception: `plugin-sdk` and
+`plugin-sdk-gradle` are not published, so they have to be built into Maven Local from a Capture App
+checkout — branch `poc/plugin-system` — before this project will even *configure*. See *Local
+testing flow* below, and `README.md` for the install path.
 
 ## Start here
 
-1. **Specs live in `specs/`.** One file per feature, Given/When/Then. `specs/README.md` defines the
-   format; `specs/example-program-summary.md` is a complete worked example describing the plugin in
-   this repo today.
-2. **Build a feature from a spec** with `/plugin-from-spec specs/<file>.md`. It restates the spec and
-   stops for approval before writing code, then goes red → green → verified.
-3. **`./verify.sh` is the definition of done.** The spec ↔ test gate, unit tests, signed bundle, a
-   check on the bundle's zip layout, and the ready-to-post dataStore config. The gate is what makes
-   "a spec is the contract" true rather than aspirational: every `@L*` scenario must be claimed by a
-   test comment `spec: <slug> <id>`, and `tools/check-specs.py` fails the run when one is not. See
-   `specs/README.md` for the convention. `--cold` additionally re-resolves every
+**If `./init.sh --check` says "pristine template", the repository has not been initialised.** That
+comes first, before any feature work: follow `docs/workflows/initialise-plugin.md`. It settles the
+plugin's name, package, id and entry point, rewrites the tree, and ends with a green `./verify.sh`.
+
+Then:
+
+1. **`plugin.json` is the single source of truth for this plugin's identity.** The Gradle build
+   reads it in `settings.gradle.kts`; `tools/check-rules.py` and `tools/check-identity.py` read it
+   through `tools/identity.py`. **Do not repeat the package, the id or the entry point anywhere
+   else**, and do not hand-edit it: `./init.sh --force` renames a fork. `tools/check-identity.py`
+   fails the build when the file and the tree disagree, which matters because nothing else can see
+   that failure — the build stays green, the bundle is signed, and the host fails at load with
+   `ClassNotFoundException`.
+2. **Specs live in `specs/`.** One file per feature, Given/When/Then. `specs/README.md` defines the
+   format, `specs/TEMPLATE.md` is the skeleton, and `specs/first-card.md` is the seed's own spec —
+   two scenarios, meant to be replaced. A complete worked example, with its implementation beside
+   it, is `examples/program-summary/`.
+3. **Build a feature from a spec** by following `docs/workflows/plugin-from-spec.md`. It restates
+   the spec and stops for approval before writing code, then goes red → green → verified. It is
+   plain prose: follow it by hand, or hand it to any agent. In Claude Code it is also
+   `/plugin-from-spec`.
+4. **`./verify.sh` is the definition of done.** The spec ↔ test gate, the identity gate, the rule
+   gates, unit tests, the signed bundle, a check on the bundle's zip layout, and the ready-to-post
+   dataStore config. The spec gate is what makes "a spec is the contract" true rather than
+   aspirational: every `@L*` scenario must be claimed by a test comment `spec: <slug> <id>`, and
+   `tools/check-specs.py` fails the run when one is not. See `specs/README.md` for the convention.
+   `--examples` additionally verifies everything under `examples/`. `--cold` re-resolves every
    dependency from a fresh Gradle home, which catches stale local state — it keeps Maven Local,
    because that is where `plugin-sdk` lives, and it is not a clean-machine check. `verify.sh` says
    so itself; there is no clean-machine check here.
-4. **Work happens on a branch, never on the default one.** The pipeline cuts `spec/<slug>` from the
+5. **Work happens on a branch, never on the default one.** The pipeline cuts `spec/<slug>` from the
    spec's filename before it edits anything, and commits the implementation only after you have
    reviewed and tried the result — including the device checklist, which is the half no test covers.
    The PR it opens is a draft, so that checklist is evidence a reviewer sees rather than takes on
    trust.
-5. **Answering its questions changes the spec, not just the chat.** Whatever gets settled at the
+6. **Answering its questions changes the spec, not just the chat.** Whatever gets settled at the
    approval gate is folded back into `specs/<file>.md` and committed first, on its own. The test is
    that re-running the pipeline on the committed spec asks nothing new — a spec that only works
    alongside the conversation that produced it is not finished.
 
 What no automated check here can cover: any read or write against DHIS2. A JVM unit test cannot
 construct a `D2` — it needs an Android `Context`, a database and an HTTP stack — so those live under
-`## Device scenarios` in a spec and are walked by hand. Keeping SDK access behind `PluginRepository`
-is what keeps everything else automatable.
+`## Device scenarios` in a spec and are walked by hand. Keeping SDK access behind the repository
+interface is what keeps everything else automatable.
 
 To walk them quickly, `./gradlew :app:installDebug` runs the plugin against a real server with real
 data — see *Development harness* below, including the shorter list of things only the Capture App
@@ -42,41 +67,62 @@ can tell you.
 ## Layout
 
 ```
-dhis2-android-plugin-sample/
-├── specs/    # Feature specifications — the input to /plugin-from-spec
-├── verify.sh # The definition of done
-├── app/      # Android application — dev-only harness against a real server.
-│   └── src/main/java/…/
-│       ├── MainActivity.kt   # renders the plugin's entry point; also holds the @Previews
-│       ├── harness/          # HarnessSession (D2 + login + sync), HarnessPluginContext,
-│       │                     # PluginHost (in HarnessPluginHost.kt) — the host's Koin container
+your-plugin/
+├── plugin.json   # Identity: name, package, plugin id, entry point, version, conventions.
+│                 # The build and the gates both read it. Nothing else repeats it.
+├── init.sh       # One-time setup of a fork. Wraps tools/init-plugin.py.
+├── verify.sh     # The definition of done. --examples to include examples/.
+├── specs/        # Feature specifications — the input to docs/workflows/plugin-from-spec.md
+├── docs/workflows/   # initialise-plugin.md, plugin-from-spec.md. Plain prose, any agent.
+├── tools/
+│   ├── identity.py        # Reads plugin.json. Shared by every gate below.
+│   ├── check-identity.py  # Does the tree agree with plugin.json? Also init's state detector.
+│   ├── check-specs.py     # Every @L scenario claimed by a test. --module for an example.
+│   └── check-rules.py     # This plugin's own architecture rules, from plugin.json's conventions.
+├── examples/     # Extra plugin modules, deleted by ./init.sh. Each self-contained:
+│   └── program-summary/   # build.gradle.kts + plugin.json + src/ + specs/
+├── app/          # Android application — dev-only harness against a real server. Never shipped.
+│   └── src/main/java/org/dhis2/mobile/plugin/harness/
+│       ├── MainActivity.kt   # loads the entry point by FQCN, exactly as the host does
+│       ├── HarnessSession.kt # D2 + login + metadata and tracker sync, each step named on screen
+│       ├── HarnessPluginContext.kt   # a real Dhis2PluginContext, identity from BuildConfig
+│       ├── HarnessPluginHost.kt      # PluginHost — reproduces the host's private Koin container
 │       └── ui/theme/         # Studio template theme
-│             # Uses CMP 1.10.3 (same Compose version as :plugin + Capture App).
-│             # A stagePluginAssets task copies :plugin's composeResources into
-│             # :app's assets at build time.
-└── plugin/   # Kotlin Multiplatform + android.kotlin.multiplatform.library + CMP.
+│             # Its Kotlin package is frozen and template-owned; only applicationId follows the
+│             # fork, so two forks' harnesses coexist on one device. Uses CMP 1.10.3 (the same
+│             # Compose version as the plugin modules and the Capture App). A stagePluginAssets
+│             # task copies the hosted module's composeResources into :app's assets at build time.
+└── plugin/       # YOUR plugin. Kotlin Multiplatform + android.kotlin.multiplatform.library + CMP.
     ├── src/commonMain/kotlin/…/
-    │   ├── model/        # ProgramSummary.kt — ProgramSummary, EnrolledPerson,
-    │   │                 # LabelledValue, WriteTarget. Plain data, no SDK types.
-    │   ├── repository/   # PluginRepository interface
+    │   ├── model/        # Plain data, no SDK types
+    │   ├── repository/   # The repository interface — the seam the whole design rests on
     │   └── ui/           # PluginUiState, PluginViewModel, PluginCard
     ├── src/commonTest/       # ViewModel/UI tests against a fake repository — JVM, no device
     ├── src/androidHostTest/  # Tests of androidMain's top-level mapping and error translation,
     │                         # built from real SDK values. Also JVM — see Architecture.
     └── src/androidMain/kotlin/…/
-        ├── ProgramOverviewPlugin.kt   # entry point: provideKoinModule + content, nothing else
-        └── data/         # D2PluginRepository — the only file that sees the SDK
+        ├── <EntryPoint>.kt   # entry point: provideKoinModule + content, nothing else
+        ├── ui/Previews.kt    # @Previews of the card, beside the card
+        └── data/             # D2PluginRepository — the only file that sees the SDK
 ```
 
 Both test source sets run under one Gradle task, `:plugin:testAndroidHostTest`.
 
-Only `:plugin`'s output is shipped. `:app` is not.
+Only `:plugin`'s output is shipped. `:app` is not, and neither is `examples/`.
+
+**What `:plugin` contains today is a seed** — a small working plugin reading the programme count. It
+exists so `./verify.sh` has something real to check and so the three layers are visible rather than
+described. Replace it; it is meant to be deleted.
+
+**Which plugin the harness renders** is `harness.module` in `local.properties`, default `:plugin`.
+`MainActivity` loads the entry point by name, so switching it needs no code change — and that
+reflective load is the only check of the entry-point contract that does not need a device.
 
 ## Architecture
 
 Three layers, and no more than three. The Capture App itself also has a use-case layer; this project
 deliberately does not — a plugin is small enough that a use case per action would be a file that only
-forwards a call, and the point of this sample is to be read start to finish by someone who has never
+forwards a call, and the point of a template is to be read start to finish by someone who has never
 seen it.
 
 ```
@@ -88,8 +134,9 @@ commonMain   commonMain      commonMain                        androidMain
 - **ViewModel** — exposes `StateFlow<PluginUiState>`, calls the repository, maps failures into
   state. Never touches `D2`.
 - **Repository interface** — the plugin's own vocabulary, returning `Result` of plain models.
-- **D2PluginRepository** — the *only* place `D2` appears. Labelling a tracked entity is **not** its
-  job: `plugin-sdk`'s `TrackedEntityLabeller` owns that rule, because a tracked entity's attribute
+- **D2PluginRepository** — the *only* place `D2` appears, and `plugin.json`'s
+  `conventions.sdkAllowed` is what says so; `tools/check-rules.py` fails when another file reaches
+  for the SDK. Labelling a tracked entity is **not** its job: `plugin-sdk`'s `TrackedEntityLabeller` owns that rule, because a tracked entity's attribute
   values arrive in no order and the programme's `displayInList` configuration is what decides which
   ones make a name. Every plugin rendering a person needs it, so none should re-derive it — and no
   grep could ever check that they got it right, which is exactly why it is a function and not a rule. Its mapping and its error translation are
@@ -109,8 +156,9 @@ plugin scattered with `d2.` calls.
 prose rule is a rule you have to remember; three of them had quietly stopped being true before
 anything was looking, which is why the distinction is written down rather than assumed.
 
-1. **[build]** Put it in `commonMain` unless it needs a platform API. In practice only `ProgramOverviewPlugin` and
-   `D2PluginRepository` belong in `androidMain`, because `D2` is the Android SDK.
+1. **[build]** Put it in `commonMain` unless it needs a platform API. In practice only the entry
+   point, `D2PluginRepository` and the `@Preview`s belong in `androidMain` — `D2` is the Android SDK
+   and `@Preview` is an Android annotation.
 2. **[build]** Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
    `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
    real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
@@ -127,8 +175,8 @@ anything was looking, which is why the distinction is written down rather than a
 5. **[build, in part]** **Count in SQL; materialise only what you show.** The one shape a grep
    *can* settle is checked — enriching with `.with…()` and then capping with `take(` — by the
    build's `cap-before-enrichment` rule. The rest is judgement. `blockingCount()` is a `COUNT(*)`;
-   `blockingGet()` materialises rows. `ProgramSummary` carries a total beside a capped list for this
-   reason. The SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
+   `blockingGet()` materialises rows. A model carrying a total beside a capped list is the shape
+   this produces — the worked example in `examples/program-summary/` does exactly that. The SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
    `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows.
 6. **[prose]** `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
    the `Exception` constructor, so `Throwable.message` is **always null** — read `errorCode()` and
@@ -137,15 +185,24 @@ anything was looking, which is why the distinction is written down rather than a
 ## Commands
 
 ```bash
-./verify.sh                            # spec gate + tests + bundle — the definition of done
-python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
-python3 tools/check-rules.py           # this sample's own rules, marked [checked] below (fast)
-./gradlew :plugin:checkPluginConventions   # the plugin system's rules, marked [build] below
+./init.sh                              # one-time setup of a fork. --check, --dry-run, --force
+./verify.sh                            # every gate + tests + bundle — the definition of done
+./verify.sh --examples                 # also verify everything under examples/
 ./verify.sh --cold                     # same, from a fresh Gradle home (Maven Local kept)
+
+python3 tools/check-identity.py        # does the tree agree with plugin.json? (fast)
+python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
+python3 tools/check-specs.py --module examples/program-summary    # the same, for an example
+python3 tools/check-rules.py           # this plugin's own rules, marked [checked] below (fast)
+./gradlew :plugin:checkPluginConventions   # the plugin system's rules, marked [build] below
+
 ./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
 ./gradlew :plugin:testAndroidHostTest  # unit tests — commonTest AND androidHostTest, JVM, no device
 ./gradlew :app:installDebug            # harness against a real server, on emulator
 ```
+
+`./verify.sh` runs all of the gates in one command, which is the point of it: a list in prose can be
+half-skipped, and "done" then means something different in every session.
 
 ## Rules (read before editing `plugin/build.gradle.kts`)
 
@@ -246,8 +303,8 @@ plugin/src/commonMain/composeResources/
 Access from code:
 
 ```kotlin
-import org.dhis2.mobile.plugin.sample.generated.resources.Res
-import org.dhis2.mobile.plugin.sample.generated.resources.plugin_loading
+import <your.package>.generated.resources.Res
+import <your.package>.generated.resources.plugin_loading
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -293,8 +350,11 @@ plugin rendering real structure over zero rows looks like a plugin bug. That fir
 afterwards the database is on the device and startup is immediate. Every step is named on screen, so
 a slow run is distinguishable from a stuck one.
 
-It renders `ProgramOverviewPlugin.content()` itself, not just `PluginCard`, by reproducing the host's private Koin
-container (`PluginHost`) — a harness whose DI differs from the host's proves the wrong thing.
+It renders the entry point's `content()` itself, not just the card, by reproducing the host's private
+Koin container (`PluginHost`) — a harness whose DI differs from the host's proves the wrong thing.
+And it *finds* that entry point the way the host does, with `Class.forName` on the FQCN from
+`plugin.json`, so a class at the wrong name or without a public no-arg constructor fails here rather
+than on a device.
 
 **What it cannot tell you.** It is not the Capture App, and these need the real host:
 
@@ -341,28 +401,44 @@ harness*).
 
 ## Entry-point contract
 
-`ProgramOverviewPlugin` must:
+The entry point — the class `plugin.json` names — must:
 
 - Implement `org.dhis2.mobile.plugin.sdk.Dhis2Plugin`.
 - Live in `src/androidMain`, because `Dhis2PluginContext.sdk` is `D2` — the DHIS2 *Android* SDK.
-- Live at the FQCN the dataStore config names as `entryPoint`. The plugin declares none of it.
+- Live at the FQCN the dataStore config names as `entryPoint`. The plugin's *Kotlin* declares none
+  of it; `plugin.json` is what fills that field in the generated `plugin-config.json`, and
+  `tools/check-identity.py` checks the class is really there.
 - Have a public no-arg constructor — the host instantiates via reflection.
 
 ## Backlog
 
+- **A way to pull template improvements into an existing fork.** `git remote add template …` plus a
+  documented merge, probably. Only becomes a real need once someone has forked and the template has
+  moved on, but that is exactly when it is too late to design.
+- **Teach `plugin-sdk-gradle` to verify the entry point.** `plugin.json` drives
+  `pluginBundle.entryPoint`, and nothing in Gradle checks the class exists; `tools/check-identity.py`
+  covers this repository only. `BuildPluginBundleTask` already has a `ClassesJarInspector`, so it
+  could assert the entry point is present in the DEX for *every* plugin project.
+- **Give `PluginBundleExtension` an `injectionPoints` property.** `DataStoreSnippet` currently
+  hardcodes `["HOME_ABOVE_PROGRAM_LIST"]` into the generated `plugin-config.json`, so a plugin
+  targeting a future slot could not say so. `plugin.json` has the field and
+  `tools/check-identity.py` rejects any other value rather than let it lie — but that is a guard
+  around a gap, not a fix for it.
 - **Adopt the DHIS2 design system.** `PluginCard` uses raw Material 3 and hardcoded hex colours;
   `org.hisp.dhis.mobile:designsystem` is not declared. See *Design system* above for how.
 - **Move the last two local rules upstream, or accept that they stay local.** `tools/check-rules.py`
   still checks that `PluginRepository` returns `Result` and that `PluginCard` bounds its height. Both
-  name types this sample invented, so upstream could only find them by growing an interface for
+  name shapes this template chose, so upstream could only find them by growing an interface for
   plugin authors to implement — a real architectural imposition the plugin system does not currently
   make. Probably the right answer is that they stay here; worth revisiting if a second plugin
   repeats them.
 
 - **Publish `plugin-sdk` and `plugin-sdk-gradle` to Maven Central.** Until then every developer has
   to build them from a Capture App checkout into their own Maven Local, which is the single biggest
-  obstacle to someone else cloning this and getting anywhere — and the reason this repository has no
-  CI: a runner cannot build it. Publishing these is what makes automated verification possible.
+  obstacle to someone forking this and getting anywhere — and the reason CI here runs only the
+  Python gates: a runner cannot do the Gradle half. Publishing these is what would let CI build the
+  bundle and run the tests, which is the difference between a contract that is enforced and one that
+  is hoped for.
 - **Get the DHIS2 SDK out of this template's build files entirely.** A plugin project should declare
   one DHIS2 dependency, `plugin-sdk`, and nothing else. Two changes in the Capture App, then one
   here:

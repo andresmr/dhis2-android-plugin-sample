@@ -1,0 +1,49 @@
+name: Gates
+
+# Three of verify.sh's gates need nothing but Python: no Android SDK, no Maven Local, no Gradle.
+# The Gradle half cannot run here — plugin-sdk and plugin-sdk-gradle are not published, so a runner
+# has no way to resolve them — and pretending otherwise would give a red badge on every push.
+#
+# So this runs the half that *can* run, on every push and pull request. It is the difference between
+# a contract that is enforced and one that is hoped for, and forks inherit it. When plugin-sdk
+# reaches Maven Central, ./verify.sh replaces this wholesale — see the backlog in AGENTS.md.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # 3.9 is the system interpreter on a current macOS, which is the floor the tools are
+          # written to: no `match`, no `tomllib`, no PEP-604 unions. A fork should not need a newer
+          # Python than the one already on its author's machine.
+          python-version: "3.9"
+
+      - name: Tree agrees with plugin.json
+        run: |
+          # `|| status=$?` rather than a bare call: `run:` uses `bash -e`, which would abort on
+          # exit 3 — the pristine template, a legitimate state for this repository to be in.
+          status=0
+          python3 tools/check-identity.py || status=$?
+          if [ $status -ne 0 ] && [ $status -ne 3 ]; then exit $status; fi
+
+      - name: Every logic scenario has a test
+        run: python3 tools/check-specs.py
+
+      - name: This plugin's own rules
+        run: python3 tools/check-rules.py
+
+      - name: The examples' gates
+        run: |
+          for example in examples/*/; do
+            [ -f "$example/build.gradle.kts" ] || continue
+            echo "--- $example"
+            python3 tools/check-specs.py --module "${example%/}"
+          done

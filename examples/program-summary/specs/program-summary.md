@@ -105,7 +105,7 @@ their attribute values
 - The programme must mark at least one tracked entity attribute `displayInList`, with a sort order,
   or every row falls through to the org unit name — which is correct behaviour but makes `@D2`
   untestable. `Child Programme` marks first and last name.
-- For `@D7`, at least one enrolled person with no value for any of those attributes.
+- For `@D5`, at least one enrolled person with no value for any of those attributes.
 
 ## UI budget
 
@@ -118,7 +118,7 @@ That cap of three is **one constant, shared**, because three different callers m
 promises with it:
 
 - `PluginViewModel` keeps the host's non-scrolling column intact. This is the promise to the host,
-  and the only one a JVM test can reach — see `@L9`.
+  and the only one a JVM test can reach — see `@L5`.
 - `PluginCard` is the backstop for a `@Preview` or a harness that bypasses the ViewModel.
 - `D2PluginRepository` avoids resolving rows nobody will see. An efficiency measure, not a promise.
 

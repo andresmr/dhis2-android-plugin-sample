@@ -46,6 +46,10 @@ NOT_A_SPEC = {"README.md", "TEMPLATE.md"}
 
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 TAG_LINE = re.compile(r"^@([LD]\d+)$")
+# The same marker anywhere else on a line: a cross-reference in prose ("see `@L5`"). Two of these
+# pointed at scenarios that never existed, because nothing was looking — the exact failure the
+# test-claim gate was written for, one level up.
+INLINE_REFERENCE = re.compile(r"@([LD]\d+)")
 SECTION = re.compile(r"^##\s+(.+?)\s*$")
 SCENARIO_START = re.compile(r"^Given\b")
 CLAIM = re.compile(r"spec:\s*([A-Za-z0-9._-]+)\s+([LD]\d+(?:\s*,\s*[LD]\d+)*)")
@@ -54,8 +58,9 @@ CLAIM = re.compile(r"spec:\s*([A-Za-z0-9._-]+)\s+([LD]\d+(?:\s*,\s*[LD]\d+)*)")
 class Spec:
     def __init__(self, slug):
         self.slug = slug
-        self.logic = {}   # id -> line number
-        self.device = {}  # id -> line number
+        self.logic = {}       # id -> line number
+        self.device = {}      # id -> line number
+        self.references = {}  # id -> line number, for @Lx mentioned in prose rather than tagging
         self.problems = []
 
     def ids(self):
@@ -87,6 +92,9 @@ def parse_spec(path):
             continue
 
         tag = TAG_LINE.match(line)
+        if not tag:
+            for found in INLINE_REFERENCE.finditer(line):
+                spec.references.setdefault(found.group(1), number)
         if tag:
             if pending and not pending_used:
                 spec.problems.append(
@@ -203,6 +211,15 @@ def main(argv=None):
             failures.append(
                 f"{where}: claims @{scenario_id}, which {spec_dir}/{slug}.md does not define"
             )
+
+    # 6. Every @Lx mentioned in a spec's prose names a scenario that spec actually defines.
+    for spec in specs:
+        for scenario_id, number in sorted(spec.references.items()):
+            if scenario_id not in spec.ids():
+                failures.append(
+                    f"{spec_dir}/{spec.slug}.md:{number}: refers to @{scenario_id}, which this "
+                    f"spec does not define"
+                )
 
     if failures:
         print("  spec ↔ test link broken:")
