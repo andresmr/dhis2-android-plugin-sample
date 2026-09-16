@@ -340,13 +340,18 @@ def move(source, destination, use_git, plan):
         return
 
     temporary = source.parent / (".init-move-tmp-%s" % source.name)
-    destination.parent.mkdir(parents=True, exist_ok=True)
 
+    # The destination's parent is created *after* the source has moved aside, never before. For a
+    # rename into a descendant — org.acme.thing -> org.acme.thing.core — the destination's parent
+    # IS the source, so creating it first and then moving the source away deletes the path just
+    # prepared. That failure leaves a .init-move-tmp-* directory behind, which is how it was found.
     if use_git:
         run(["git", "mv", str(source), str(temporary)])
+        destination.parent.mkdir(parents=True, exist_ok=True)
         run(["git", "mv", str(temporary), str(destination)])
     else:
         shutil.move(str(source), str(temporary))
+        destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(temporary), str(destination))
 
 
@@ -729,4 +734,19 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except subprocess.CalledProcessError as error:
+        # A traceback tells a forker nothing they can act on. The state is recoverable and the
+        # recovery is one command, so say that instead.
+        say()
+        say("\033[31m✗ Initialisation failed while running: %s\033[0m"
+            % " ".join(error.cmd))
+        if error.stdout:
+            say(error.stdout.rstrip())
+        say()
+        say("  Nothing was committed. plugin.json records the attempt, so re-running the same")
+        say("  command resumes. To go back to the template instead:")
+        say()
+        say("      git reset --hard && git clean -fd")
+        sys.exit(EXIT_PARTIAL)
