@@ -11,7 +11,7 @@ composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
 pluginSdk = "0.1.3-SNAPSHOT"
 # Only the harness app declares the SDK; :plugin gets it from the bundle plugin at the host's
-# version. Keep this equal to what that plugin injects — see CLAUDE.md.
+# version. Keep this equal to what that plugin injects — see AGENTS.md.
 dhis2AndroidCore = "1.15.0-20260821.111928-77"
 desugarJdkLibs = "2.1.5"
 # Must match the Capture App host's — the plugin DEX resolves these from the host's class loader.

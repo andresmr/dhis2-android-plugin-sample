@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.sample.ui.theme
+package org.dhis2.mobile.plugin.harness.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

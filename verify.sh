@@ -56,8 +56,8 @@ fi
 
 # ------------------------------------------------------------- 2. this sample's own rules
 
-# CLAUDE.md says it about androidMain: a rule whose only enforcement sits somewhere nothing can
-# reach "is not enforced, it is hoped for". That applies to CLAUDE.md itself, and an audit found
+# AGENTS.md says it about androidMain: a rule whose only enforcement sits somewhere nothing can
+# reach "is not enforced, it is hoped for". That applies to AGENTS.md itself, and an audit found
 # three rules the code had quietly stopped following.
 #
 # Only the rules specific to *this* plugin are checked here. The plugin system's own conventions —
@@ -133,7 +133,7 @@ echo
 echo "Not covered by any of the above: every scenario under '## Device scenarios' in the spec."
 echo "A JVM test cannot construct a D2, so nothing here exercises a read or a write."
 echo
-echo "  ./gradlew :app:installDebug    runs the plugin against a real server (see CLAUDE.md)"
+echo "  ./gradlew :app:installDebug    runs the plugin against a real server (see AGENTS.md)"
 echo
 echo "That covers most of the checklist. What still needs the Capture App itself: the height budget,"
 echo "the class-loader reload, resource resolution, Koin isolation, and Compose version skew."

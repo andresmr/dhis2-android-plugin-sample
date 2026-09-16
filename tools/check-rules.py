@@ -14,12 +14,12 @@ belongs in the build; a convention of *this plugin* belongs in this repo.
 
 Original note, still true of what is left:
 
-CLAUDE.md says it plainly about `androidMain`: "when a rule matters for correctness and its only
+AGENTS.md says it plainly about `androidMain`: "when a rule matters for correctness and its only
 enforcement sits [somewhere no test can reach], it is not enforced, it is hoped for." That applies
-to CLAUDE.md itself. A rule whose only enforcement is a paragraph asking nicely is decoration, and
+to AGENTS.md itself. A rule whose only enforcement is a paragraph asking nicely is decoration, and
 an audit found three such rules that the code had quietly stopped following.
 
-So the rules that are mechanical are checked here, and the rest are labelled in CLAUDE.md as not
+So the rules that are mechanical are checked here, and the rest are labelled in AGENTS.md as not
 enforced, which is at least honest. Each check below names the rule it implements.
 
 What is deliberately *not* here: anything needing to understand the code rather than find a token.

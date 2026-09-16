@@ -13,7 +13,7 @@ bundle, and is rendered inside the Capture App from a server-side configuration.
 > it is not optional.
 
 This README is the install guide. For how the plugin is put together — the layer rules, the build
-constraints, the design system, the backlog — read [`CLAUDE.md`](CLAUDE.md).
+constraints, the design system, the backlog — read [`AGENTS.md`](AGENTS.md).
 
 ## Prerequisites
 
@@ -102,7 +102,7 @@ on screen, so a slow run is distinguishable from a stuck one. Afterwards the dat
 device and startup is immediate.
 
 This step is optional but much faster to iterate on than the full host. It is also not the Capture
-App: see *Development harness* in [`CLAUDE.md`](CLAUDE.md) for the list of things only the real host
+App: see *Development harness* in [`AGENTS.md`](AGENTS.md) for the list of things only the real host
 can tell you.
 
 ### 5. Serve the bundle
@@ -164,7 +164,7 @@ sync has not finished.
 
 ## Where to go next
 
-- [`CLAUDE.md`](CLAUDE.md) — the working reference: the three layers and their rules, the build
+- [`AGENTS.md`](AGENTS.md) — the working reference: the three layers and their rules, the build
   constraints that each cost real debugging, the DHIS2 design system, the on-device checklist, and
   the backlog.
 - [`specs/README.md`](specs/README.md) and

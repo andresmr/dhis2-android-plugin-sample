@@ -13,14 +13,23 @@ plugins {
     alias(libs.plugins.dhis2.pluginBundle)
 }
 
-// The only plugin-specific knob. Everything else about the plugin — its id, entry-point class,
-// injection points and data scope — lives in the DHIS2 server dataStore config, which is the
-// single source of truth. The plugin's Kotlin declares none of it.
-version = "1.7.0"
+// Identity comes from plugin.json, via settings.gradle.kts. Nothing below is written twice.
+val dhis2PluginId: String by extra
+val dhis2PluginPackage: String by extra
+val dhis2PluginEntryPointFqcn: String by extra
+val dhis2PluginVersion: String by extra
+val dhis2ResourcePackage: String by extra
+
+// The only plugin-specific knob, and it lives in plugin.json rather than here. Everything else about
+// the plugin — its id, entry-point class, injection points and data scope — lives in the DHIS2
+// server dataStore config, which is the single source of truth. The plugin's Kotlin declares none
+// of it. Bump this to invalidate the device cache: the Capture App caches bundles by
+// {id}-{version}.zip, so shipping a change at an unchanged version keeps the old code running.
+version = dhis2PluginVersion
 
 kotlin {
     android {
-        namespace = "org.dhis2.mobile.plugin.sample"
+        namespace = dhis2PluginPackage
         compileSdk = 37
         minSdk = 26
         compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
@@ -109,8 +118,8 @@ val pinnedBuildTools: File = File(androidSdkDirectory, "build-tools/$pluginBuild
 // after every build. The bundle carries neither value — the server dataStore stays the single
 // source of truth for this plugin's identity, and the host reads both from there.
 pluginBundle {
-    pluginId = "org.dhis2.mobile.plugin.sample"
-    entryPoint = "org.dhis2.mobile.plugin.sample.ProgramOverviewPlugin"
+    pluginId = dhis2PluginId
+    entryPoint = dhis2PluginEntryPointFqcn
 
     d8Executable = File(pinnedBuildTools, "d8")
     apksignerExecutable = File(pinnedBuildTools, "apksigner")
@@ -125,6 +134,11 @@ pluginBundle {
 compose.resources {
     // Override default (which derives from the root project name — gives an ugly
     // backtick-escaped package when the project name contains spaces).
-    packageOfResClass = "org.dhis2.mobile.plugin.sample.generated.resources"
+    //
+    // This exact string is also the directory name inside the bundle
+    // (android/composeResources/<packageOfResClass>/…) and the path :app stages assets into. All
+    // three come from plugin.json, because a disagreement between them raises no error at all:
+    // green build, valid bundle, and every Res.string.* silently empty at runtime.
+    packageOfResClass = dhis2ResourcePackage
     publicResClass = true
 }

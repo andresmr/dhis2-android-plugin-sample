@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.sample.harness
+package org.dhis2.mobile.plugin.harness
 
 import androidx.compose.runtime.Composable
 import org.dhis2.mobile.plugin.sdk.Dhis2Plugin

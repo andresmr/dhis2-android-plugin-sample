@@ -11,14 +11,14 @@ Invoked as `/plugin-from-spec specs/<file>.md`. If no file is named, list what i
 which one — do not guess, and do not start from a spec you inferred from the conversation. The spec
 is the contract; if it does not exist as a file yet, write it first and get it approved as phase 01.
 
-Read `CLAUDE.md` before anything else. It carries the architecture, the layer rules, and the build
+Read `AGENTS.md` before anything else. It carries the architecture, the layer rules, and the build
 traps, and it is not repeated here.
 
 ---
 
 ## Phase 00 — Orient
 
-Read the spec and `CLAUDE.md`. Read the existing code in the layer you are about to touch — this is a
+Read the spec and `AGENTS.md`. Read the existing code in the layer you are about to touch — this is a
 small project and reading `PluginUiState`, `PluginViewModel` and `PluginRepository` costs almost
 nothing and prevents inventing a second way to do what already has one.
 
@@ -151,7 +151,7 @@ model → PluginRepository (interface) → PluginUiState → PluginViewModel →
 
 Prefer DHIS2 design-system components over raw Material 3 so the plugin looks like the app it
 renders inside — but note the dependency is **not declared in this build yet**, so adopting it means
-declaring it first. See the *Design system* section of `CLAUDE.md` for the reference URLs and the
+declaring it first. See the *Design system* section of `AGENTS.md` for the reference URLs and the
 `compileOnly` rule, and its entry in the backlog.
 
 Run the tests until green. If a test needs changing to pass, say why in the report — a test edited to
@@ -185,7 +185,7 @@ Report, in this order:
    plainly that these are unverified — a JVM unit test cannot construct a `D2`, so nothing in
    `commonTest` exercises a read or a write. Point at `./gradlew :app:installDebug`, which runs the
    plugin against a real server and makes most of the checklist quicker, and say which items still
-   need the Capture App itself (see *Development harness* in `CLAUDE.md`).
+   need the Capture App itself (see *Development harness* in `AGENTS.md`).
 3. **The metadata the device scenarios need**, from the spec's `## Metadata needs`.
 4. **The install steps** — `verify.sh` already printed the bundle path, its checksum and the
    `plugin-config.json`, with `downloadUrl` generated for an emulator on port 8081. Point at them, and

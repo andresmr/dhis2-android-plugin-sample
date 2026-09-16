@@ -102,7 +102,7 @@ toggle.
 A JVM unit test has none of those, so no test in `commonTest` can exercise the code path that reads
 from DHIS2.
 
-(An *application* module can build one — that is what the development harness does, see `CLAUDE.md`.
+(An *application* module can build one — that is what the development harness does, see `AGENTS.md`.
 It makes many device scenarios quicker to check by hand, but it is not the Capture App and does not
 make them automated.)
 

@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">DHIS2 Android plugin sample</string>
+    <!-- The harness, not the plugin. The plugin's own name lives in plugin.json. -->
+    <string name="app_name">DHIS2 plugin harness</string>
 </resources>

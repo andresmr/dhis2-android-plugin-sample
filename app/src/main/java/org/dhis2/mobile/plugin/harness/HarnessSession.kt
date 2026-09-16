@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.sample.harness
+package org.dhis2.mobile.plugin.harness
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +23,7 @@ sealed interface HarnessState {
 /**
  * Brings up a real [D2] against a real server so the plugin can be run with real data.
  *
- * Not a substitute for the Capture App — `CLAUDE.md` lists what only the real host can exercise.
+ * Not a substitute for the Capture App — `AGENTS.md` lists what only the real host can exercise.
  */
 class HarnessSession(private val context: Context) {
 
