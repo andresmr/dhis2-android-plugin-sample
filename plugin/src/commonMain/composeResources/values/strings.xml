@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="plugin_title">Child Programme</string>
-    <string name="plugin_loading">Loading tracked entity instances…</string>
-    <string name="plugin_error_prefix">Failed to read TEIs:</string>
-    <!-- Compose Multiplatform substitutes positional %N$s placeholders only; bare %d is left as-is. -->
-    <string name="plugin_teis_count">%1$s tracked entity instance(s) available offline</string>
-    <string name="plugin_and_more">… and %1$s more</string>
+    <!-- Every string the card shows. Keeping them here rather than in the Composable is what makes
+         values-es/ possible at all — cheap to keep from day one, expensive to retrofit once a
+         string has been hardcoded. -->
+    <string name="plugin_title">My DHIS2 plugin</string>
+    <string name="plugin_loading">Loading…</string>
+    <string name="plugin_error_prefix">Could not read from DHIS2:</string>
+    <!-- Compose Multiplatform substitutes positional %N$s placeholders; a bare %d is left alone. -->
+    <string name="plugin_program_count">%1$s program(s) synced to this device</string>
 </resources>

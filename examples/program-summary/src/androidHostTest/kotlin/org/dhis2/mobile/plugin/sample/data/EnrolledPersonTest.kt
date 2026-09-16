@@ -49,7 +49,7 @@ class EnrolledPersonTest {
     private fun labeller(vararg attributes: DisplayAttribute) =
         TrackedEntityLabeller(attributes.toList()) { ORG_UNIT }
 
-    // spec: example-program-summary L2
+    // spec: program-summary L2
     @Test
     fun `names a person from the programme's attributes, in the programme's order`() {
         // The values arrive gender-first and surname-before-given-name, as the SDK is free to.
@@ -65,7 +65,7 @@ class EnrolledPersonTest {
         assertEquals("Filona Ryder", person.displayLabel)
     }
 
-    // spec: example-program-summary L2
+    // spec: program-summary L2
     @Test
     fun `leaves out an attribute the programme does not list`() {
         val person = tei(
@@ -77,7 +77,7 @@ class EnrolledPersonTest {
         assertEquals("Filona", person.displayLabel)
     }
 
-    // spec: example-program-summary L2
+    // spec: program-summary L2
     @Test
     fun `falls back to something a human recognises, never a uid`() {
         // A programme listing attributes this person has no value for. Rendering the uid here is

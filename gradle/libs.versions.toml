@@ -18,7 +18,6 @@ desugarJdkLibs = "2.1.5"
 koin = "4.1.1"
 # Test-only, so free to differ from the host.
 coroutinesTest = "1.10.2"
-turbine = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,7 +42,10 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 
 # Test-only.
 test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
-test-turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+# @Preview, for the plugin modules. compileOnly there: the annotation is CLASS-retention, so
+# its absence at runtime is harmless, and a plugin bundle must carry nothing but its own code.
+compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "composeMultiplatform" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version = "2.9.4" }
 
 [plugins]

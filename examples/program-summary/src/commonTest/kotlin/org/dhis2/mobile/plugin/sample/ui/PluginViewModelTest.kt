@@ -70,7 +70,7 @@ class PluginViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    // spec: example-program-summary L1
+    // spec: program-summary L1
     @Test
     fun `load the summary of the programme the repository resolves`() = runTest(dispatcher) {
         val repository = FakeRepository(Result.success(summary()))
@@ -86,7 +86,7 @@ class PluginViewModelTest {
         assertEquals(1, repository.summaryRequests)
     }
 
-    // spec: example-program-summary L2
+    // spec: program-summary L2
     @Test
     fun `carry the recent people, with their attribute labels`() = runTest(dispatcher) {
         val people = listOf(person("Filona Ryder"), person("Gertrude Fjordsen"), person("Frank Fjordsen"))
@@ -102,7 +102,7 @@ class PluginViewModelTest {
         loaded.recent.forEach { assertTrue(it.uid !in it.displayLabel) }
     }
 
-    // spec: example-program-summary L3
+    // spec: program-summary L3
     @Test
     fun `carry no people when there are none`() = runTest(dispatcher) {
         val repository = FakeRepository(Result.success(summary(recent = emptyList())))
@@ -112,7 +112,7 @@ class PluginViewModelTest {
         assertTrue(assertIs<SummaryState.Loaded>(state.summary).summary.recent.isEmpty())
     }
 
-    // spec: example-program-summary L4
+    // spec: program-summary L4
     @Test
     fun `render a failed read rather than throwing`() = runTest(dispatcher) {
         // A throw escaping here would take the host's whole screen down, so the repository returns
@@ -127,7 +127,7 @@ class PluginViewModelTest {
 
 
 
-    // spec: example-program-summary L5
+    // spec: program-summary L5
     @Test
     fun `cap the listed people at the shared display budget`() = runTest(dispatcher) {
         val crowd = List(5) { person("person-$it") }
@@ -143,7 +143,7 @@ class PluginViewModelTest {
         assertEquals(crowd.take(MAX_LISTED_PEOPLE), listed)
     }
 
-    // spec: example-program-summary L6
+    // spec: program-summary L6
     @Test
     fun `carry every person when there are fewer than the budget`() = runTest(dispatcher) {
         val few = List(2) { person("person-$it") }

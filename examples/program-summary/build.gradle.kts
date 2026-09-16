@@ -13,7 +13,17 @@ plugins {
     alias(libs.plugins.dhis2.pluginBundle)
 }
 
-// Identity comes from plugin.json, via settings.gradle.kts. Nothing below is written twice.
+// ─────────────────────────────────────────────────────────────────────────────
+// An example plugin. Not shipped, and deleted from a fork by ./init.sh.
+//
+// Identical in shape to plugin/build.gradle.kts on purpose — an example whose build differs from
+// the one a forker gets proves the wrong thing. Its identity comes from the plugin.json beside this
+// file rather than the one at the repo root, which is what lets it keep its own package and version
+// while a fork renames everything else.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Identity comes from this module's plugin.json, via settings.gradle.kts. Nothing below is written
+// twice.
 val dhis2PluginId: String by extra
 val dhis2PluginPackage: String by extra
 val dhis2PluginEntryPointFqcn: String by extra

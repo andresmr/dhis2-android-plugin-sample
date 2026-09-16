@@ -54,7 +54,13 @@ val dhis2HarnessApplicationId: String by extra
 // looks in and every Res.string.* resolves to nothing — with no error anywhere. Both come from
 // plugin.json, which is the only reason that sentence is now a fact rather than a hope.
 val pluginResourcePackage = dhis2ResourcePackage
-val pluginProject = project(":plugin")
+
+// Which plugin the harness hosts: your own :plugin, or one of the examples. Resolved in
+// settings.gradle.kts from `harness.module` in local.properties, which is also where the identity
+// above came from — so the module, its package and its entry point can never be from two different
+// plugins.
+val dhis2HarnessModule: String by extra
+val pluginProject = project(dhis2HarnessModule)
 
 abstract class StagePluginAssets : DefaultTask() {
     @get:InputDirectory
@@ -158,7 +164,7 @@ androidComponents {
 // real DHIS2 Capture App host. NOT the Google AndroidX Compose BOM — those two ABIs
 // are incompatible and crash the plugin with NoSuchMethodError at composition time.
 dependencies {
-    implementation(project(":plugin"))
+    implementation(pluginProject)
     implementation(libs.plugin.sdk)
     // A real dependency here, not compileOnly: :app is the harness, not a shipped plugin, and it is
     // the thing that constructs the D2 the plugin is handed.

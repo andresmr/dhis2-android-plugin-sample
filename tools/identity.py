@@ -22,10 +22,10 @@ REQUIRED = ("name", "slug", "pluginId", "package", "entryPoint", "version")
 # What the un-initialised template ships as. `init-plugin.py` rewrites *from* these, and
 # `check-identity.py` reports a tree still carrying them as pristine rather than broken.
 TEMPLATE = {
-    "name": "DHIS2 Android plugin sample",
-    "slug": "dhis2-android-plugin-sample",
-    "package": "org.dhis2.mobile.plugin.sample",
-    "entryPoint": "ProgramOverviewPlugin",
+    "name": "My DHIS2 plugin",
+    "slug": "dhis2-android-plugin-template",
+    "package": "org.dhis2.mobile.plugin.template",
+    "entryPoint": "MyPlugin",
 }
 
 # plugin-sdk-gradle's DataStoreSnippet hardcodes the list it writes into plugin-config.json, and

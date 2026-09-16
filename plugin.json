@@ -1,11 +1,11 @@
 {
   "$schema": "tools/plugin.schema.json",
-  "name": "DHIS2 Android plugin sample",
-  "slug": "dhis2-android-plugin-sample",
-  "pluginId": "org.dhis2.mobile.plugin.sample",
-  "package": "org.dhis2.mobile.plugin.sample",
-  "entryPoint": "ProgramOverviewPlugin",
-  "version": "1.7.0",
+  "name": "My DHIS2 plugin",
+  "slug": "dhis2-android-plugin-template",
+  "pluginId": "org.dhis2.mobile.plugin.template",
+  "package": "org.dhis2.mobile.plugin.template",
+  "entryPoint": "MyPlugin",
+  "version": "0.1.0",
   "injectionPoints": ["HOME_ABOVE_PROGRAM_LIST"],
   "conventions": {
     "sdkAllowed": [

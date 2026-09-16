@@ -122,9 +122,11 @@ def check_no_template_residue(problems, identity):
     """Nothing outside the examples still carries the template's own names."""
     if is_pristine(identity):
         return
+    # Deliberately not the bare entry-point class name: it is a short PascalCase word a fork might
+    # legitimately choose, and a leftover reference to it would carry the package anyway — or fail
+    # to compile, which is a louder signal than this check could be.
     tokens = {
         TEMPLATE["package"]: "the template's Kotlin package",
-        TEMPLATE["entryPoint"]: "the template's entry-point class",
         TEMPLATE["slug"]: "the template's project slug",
     }
     for path in scanned_files():
