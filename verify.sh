@@ -54,7 +54,28 @@ else
   echo "  skipped: python3 not on PATH"
 fi
 
-# ------------------------------------------------------------- 2. this sample's own rules
+# ------------------------------------------------------------- 1b. identity
+
+# plugin.json drives the Android namespace, the bundle's entryPoint, the Compose Resources package
+# and the harness's applicationId. Nothing in Gradle checks that the Kotlin agrees with it: edit
+# `package` by hand and the build stays green, the bundle is signed, and the host fails at load
+# with ClassNotFoundException. That gap is the whole reason this step exists.
+step "Tree agrees with plugin.json"
+if command -v python3 >/dev/null 2>&1; then
+  # `|| IDENTITY_STATUS=$?` rather than a bare call: `set -e` would abort on exit 3, which is a
+  # state this script has to be able to report rather than die on.
+  IDENTITY_STATUS=0
+  python3 tools/check-identity.py || IDENTITY_STATUS=$?
+  # 3 is the pristine template, which is a legitimate state to verify in — it is what every fork
+  # starts from, and it has to build. 4 is a real disagreement.
+  if [[ $IDENTITY_STATUS -ne 0 && $IDENTITY_STATUS -ne 3 ]]; then
+    fail "plugin.json and the source tree disagree (see above)"
+  fi
+else
+  echo "  skipped: python3 not on PATH"
+fi
+
+# ------------------------------------------------------------- 2. this plugin's own rules
 
 # AGENTS.md says it about androidMain: a rule whose only enforcement sits somewhere nothing can
 # reach "is not enforced, it is hoped for". That applies to AGENTS.md itself, and an audit found
@@ -64,9 +85,9 @@ fi
 # the SDK out of shared source, host-provided dependencies compileOnly, rows capped before they are
 # enriched — moved into plugin-sdk-gradle, so every plugin project inherits them by applying the
 # bundle plugin rather than by copying this script. That is step 3.
-step "This sample's own rules"
+step "This plugin's own rules"
 if command -v python3 >/dev/null 2>&1; then
-  python3 tools/check-rules.py || fail "A rule of this sample's is broken (see above)"
+  python3 tools/check-rules.py || fail "A rule of this plugin's is broken (see above)"
 else
   echo "  skipped: python3 not on PATH"
 fi
