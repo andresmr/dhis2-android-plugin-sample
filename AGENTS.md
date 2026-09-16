@@ -118,6 +118,14 @@ described. Replace it; it is meant to be deleted.
 `MainActivity` loads the entry point by name, so switching it needs no code change — and that
 reflective load is the only check of the entry-point contract that does not need a device.
 
+**Examples in `examples/`, experiments on a branch.** An example belongs in-tree when it compiles
+against the same `plugin-sdk` as everything else: it is then verified by `./verify.sh --examples` on
+every run, and a change to the harness and to the example exercising it land in one commit. An
+experiment against a *different* SDK — `poc/scoped-sdk` here, which targets the Capture App's
+`poc/plugin-system-scopedSDK` — cannot be a module in this build at all, so it stays a branch. Be
+aware of what that costs: `poc/scoped-sdk` renamed its package by hand and quietly lost `specs/`,
+`tools/` and `verify.sh` doing it. Rebase such a branch onto `main` rather than letting it drift.
+
 ## Architecture
 
 Three layers, and no more than three. The Capture App itself also has a use-case layer; this project
