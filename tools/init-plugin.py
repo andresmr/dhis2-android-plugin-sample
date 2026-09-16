@@ -239,11 +239,19 @@ def kebab_case(text):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", text.lower())).strip("-")
 
 
-def ask(prompt, default):
+def ask(prompt, default, flag):
+    """The value, from a prompt — or from the documented default when there is no terminal.
+
+    Without a TTY a prompt would hang, and a hung prompt is indistinguishable from a hung build.
+    So a value with a default is simply taken; only a value with none is an error, and it names
+    the flag to pass.
+    """
     if not sys.stdin.isatty():
+        if default:
+            return default
         die(
             "%s is required, and stdin is not a terminal so there is nothing to prompt.\n"
-            "  Pass every value as a flag — see ./init.sh --help." % prompt
+            "  Pass %s — see ./init.sh --help." % (prompt, flag)
         )
     suffix = " [%s]" % default if default else ""
     answer = input("  %s%s: " % (prompt, suffix)).strip()
@@ -251,17 +259,23 @@ def ask(prompt, default):
 
 
 def collect(args):
-    name = args.name or ask("Plugin name, as a human would say it", "")
+    name = args.name or ask("Plugin name, as a human would say it", "", "--name")
     if not name:
         die("--name is required.")
 
     package = args.package or ask(
-        "Kotlin package", "org.myorg.%s" % re.sub(r"[^a-z0-9]", "", kebab_case(name))
+        "Kotlin package",
+        "org.myorg.%s" % re.sub(r"[^a-z0-9]", "", kebab_case(name)),
+        "--package",
     )
-    plugin_id = args.plugin_id or ask("Plugin id (reverse-domain)", "%s" % package)
-    entry_point = args.entry_point or ask("Entry-point class", pascal_case(name) + "Plugin")
-    version = args.version or ask("Version", "0.1.0")
-    slug = args.slug or ask("Project slug (Gradle rootProject.name)", kebab_case(name))
+    plugin_id = args.plugin_id or ask("Plugin id (reverse-domain)", package, "--plugin-id")
+    entry_point = args.entry_point or ask(
+        "Entry-point class", pascal_case(name) + "Plugin", "--entry-point"
+    )
+    version = args.version or ask("Version", "0.1.0", "--version")
+    slug = args.slug or ask(
+        "Project slug (Gradle rootProject.name)", kebab_case(name), "--slug"
+    )
 
     data = {
         "$schema": "tools/plugin.schema.json",
