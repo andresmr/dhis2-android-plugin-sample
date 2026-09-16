@@ -374,25 +374,42 @@ class Plan(list):
         self.dry_run = dry_run
 
 
-def move_sources(previous, target, use_git, plan):
-    old_path = previous["packagePath"]
-    new_path = target["packagePath"]
-    if old_path == new_path:
-        return
+def move_sources(candidates, target, use_git, plan):
+    """Move each source set's package directory to the target's path.
+
+    The source is whichever candidate package directory actually **exists on disk**, not whatever
+    plugin.json says. That distinction is what makes a resumed run work: plugin.json is written
+    first, so after an interrupted run it already describes the destination, and trusting it would
+    make every move a no-op while the files sat at the old path.
+    """
     for source_set in PLUGIN_SOURCE_SETS:
         root = ROOT / "plugin/src" / source_set / "kotlin"
-        move(root / old_path, root / new_path, use_git, plan)
-        if not plan.dry_run:
-            prune_empty((root / old_path).parent, root)
+        if not root.is_dir():
+            continue
+        destination = root / target["packagePath"]
+        for candidate in candidates:
+            source = root / candidate["packagePath"]
+            if source == destination or not source.is_dir():
+                continue
+            move(source, destination, use_git, plan)
+            if not plan.dry_run:
+                prune_empty(source.parent, root)
+            break
 
 
-def rename_entry_point(previous, target, use_git, plan):
-    if previous["entryPoint"] == target["entryPoint"]:
-        return
+def rename_entry_point(candidates, target, use_git, plan):
+    """Rename the entry-point file, again from whichever name is really on disk."""
     directory = ROOT / "plugin/src/androidMain/kotlin" / target["packagePath"]
-    source = directory / ("%s.kt" % previous["entryPoint"])
     destination = directory / ("%s.kt" % target["entryPoint"])
-    if not source.is_file() or destination.is_file():
+    if destination.is_file():
+        return
+    source = None
+    for candidate in candidates:
+        attempt = directory / ("%s.kt" % candidate["entryPoint"])
+        if attempt.is_file() and attempt != destination:
+            source = attempt
+            break
+    if source is None:
         return
     plan.append("rename %s -> %s.kt" % (source.relative_to(ROOT), target["entryPoint"]))
     if plan.dry_run:
@@ -673,8 +690,9 @@ def main(argv=None):
     if data and not is_pristine(data):
         sources.append(derive(dict(data)))
 
-    # What the files on disk are named after right now, which is what the moves have to start from.
-    current_identity = sources[-1]
+    # Tried in turn against what is actually on disk, most recently written first. A fresh run finds
+    # the template's paths; a resumed one finds them too, because the moves had not happened.
+    candidates = list(reversed(sources))
 
     if not args.yes and not args.dry_run and sys.stdin.isatty():
         say()
@@ -691,8 +709,8 @@ def main(argv=None):
         write_plugin_json(target, initialised=False)
     plan.append("write plugin.json (initialised: false)")
 
-    move_sources(current_identity, target, use_git, plan)
-    rename_entry_point(current_identity, target, use_git, plan)
+    move_sources(candidates, target, use_git, plan)
+    rename_entry_point(candidates, target, use_git, plan)
     if not args.keep_examples:
         remove_examples(plan)
     rewrite(substitutions(sources, target), plan)
