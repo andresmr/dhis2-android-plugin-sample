@@ -1,9 +1,31 @@
+<!--
+  The plugin mark: a layer added to the DHIS2 stack.
+
+  Derived from the Capture App's own layered glyph, which is what this plugin renders beside. The
+  top layer is solid and the host's layer is an outline, because a plugin IS an extra layer — one
+  the app did not ship with, slotted in above the programme list.
+
+  Drawn at 24dp, the size it is actually used at, rather than shrunk from a launcher icon. That is
+  why it is two shapes and not five: at this size a gap survives and a detail does not. Filled
+  against stroked carries the meaning even when the gap closes on a low-density screen.
+
+  Replace it with your own. It is the template's mark, not yours.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+
+    <!-- The plugin: solid, detached, above. -->
     <path
-        android:fillColor="#4CAF50"
-        android:pathData="M12,2L4,6V12C4,16.97 7.58,21.11 12,22C16.42,21.11 20,16.97 20,12V6L12,2M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z" />
+        android:fillColor="#045D84"
+        android:pathData="M12,1.8L18.6,5.6L12,9.4L5.4,5.6Z" />
+
+    <!-- The host's stack: an outline, so the two never merge into one blob. -->
+    <path
+        android:strokeColor="#045D84"
+        android:strokeWidth="1.7"
+        android:strokeLineJoin="round"
+        android:pathData="M12,12L20.8,17L12,22L3.2,17Z" />
 </vector>
