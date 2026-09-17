@@ -106,11 +106,18 @@ fi
 
 # ------------------------------------------- 3. the plugin system's conventions + unit tests
 
-# One Gradle invocation for both, so there is no second daemon warm-up. checkPluginConventions comes
-# from plugin-sdk-gradle; buildPluginBundle depends on it too, because a gate you can bypass by
-# packaging is not a gate.
-step "Plugin-system conventions + unit tests (commonTest + androidHostTest, JVM — no device)"
-./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} :plugin:checkPluginConventions :plugin:testAndroidHostTest
+# One Gradle invocation for all three, so there is no second daemon warm-up. checkPluginConventions
+# comes from plugin-sdk-gradle; buildPluginBundle depends on it too, because a gate you can bypass
+# by packaging is not a gate.
+#
+# checkComposeAlignment is this repo's own, and covers the one host fact plugin-sdk-gradle does not
+# publish: the androidx Compose version. Compiling against a different one than the host provides
+# fails at composition with NoSuchMethodError and nothing before a device says so.
+step "Plugin-system conventions + Compose alignment + unit tests (JVM — no device)"
+./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} \
+  :plugin:checkPluginConventions \
+  checkComposeAlignment \
+  :plugin:testAndroidHostTest
 
 # ---------------------------------------------------------------- 4. the bundle
 

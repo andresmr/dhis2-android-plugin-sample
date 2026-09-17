@@ -9,6 +9,16 @@ activityCompose = "1.13.0"
 kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
+# androidx Compose, as the HOST provides it at runtime — NOT what Compose Multiplatform brings.
+# CMP 1.10.3 pulls androidx Compose 1.10.5 transitively; the Capture App declares 1.10.6 directly
+# and wins in its own resolution, so the classes a plugin actually meets are 1.10.6. Compiling
+# against 1.10.5 is how `NoSuchMethodError: weight$default` happened.
+#
+# This is a hand-mirrored host fact, and the only one left: plugin-sdk-gradle's HostToolchain
+# publishes KOTLIN, COMPOSE (the CMP plugin version), COMPILE_SDK, JVM_TARGET, PLUGIN_SDK_VERSION
+# and DHIS2_SDK_VERSION — but not this. Until it does, raising the host's `compose` means raising
+# this too. See the backlog in AGENTS.md.
+androidxCompose = "1.10.6"
 pluginSdk = "0.1.3-SNAPSHOT"
 # Only the harness app declares the SDK; :plugin gets it from the bundle plugin at the host's
 # version. Keep this equal to what that plugin injects — see AGENTS.md.

@@ -203,6 +203,7 @@ python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
 python3 tools/check-specs.py --module examples/program-summary    # the same, for an example
 python3 tools/check-rules.py           # this plugin's own rules, marked [checked] below (fast)
 ./gradlew :plugin:checkPluginConventions   # the plugin system's rules, marked [build] below
+./gradlew checkComposeAlignment        # androidx Compose matches what the host provides
 
 ./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
 ./gradlew :plugin:testAndroidHostTest  # unit tests — commonTest AND androidHostTest, JVM, no device
@@ -230,13 +231,23 @@ cannot slip past it.
    `com.github.dhis2:sms-compression` from JitPack, and the host usually tracks SDK snapshots, so
    both JitPack and the snapshots repo must be in `dependencyResolutionManagement`. Without them the
    build fails at dependency *resolution*, with an error that never mentions the DHIS2 SDK.
-3. **[prose]** **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx `compose`
-   separately, depending on the latter directly and at a higher version, while CMP brings
-   `foundation-layout` transitively at a lower one. Almost everything is identical, which is the
-   trap: the first casualty is a *defaulted* overload whose `…$default` synthetic changed.
-   `Modifier.weight(1f)` crashed the host with `NoSuchMethodError: weight$default` at composition.
-   Prefer layout APIs without default arguments, and note `compose.foundation` is not even declared
-   here — it arrives transitively, so its version floats.
+3. **[checked]** **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx
+   `compose` separately, depending on the latter directly and at a higher version — 1.10.6 against
+   the 1.10.5 CMP resolves. Almost everything is identical, which is the trap: the first casualty is
+   a *defaulted* overload whose `…$default` synthetic moved. `Modifier.weight(1f)` crashed the host
+   with `NoSuchMethodError: weight$default` at composition.
+
+   The root `build.gradle.kts` now forces `androidx.compose.{animation,foundation,runtime,ui}` to
+   `libs.versions.androidxCompose` in **every** module, harness included, and
+   `./gradlew checkComposeAlignment` reads the resolved versions back and fails when the force stops
+   applying. `material3` is deliberately excluded: androidx's sub-groups do not share one version
+   line — material3 is on 1.4.x — so a force across `androidx.compose.*` would be wrong.
+
+   What is still on you: `androidxCompose` in the version catalogue is a **hand-mirrored host fact**,
+   the last one left. `HostToolchain` publishes Kotlin, the CMP version, compileSdk, jvmTarget,
+   `plugin-sdk` and the DHIS2 SDK — but not this. Raising the host's `compose` means raising it here
+   too, and nothing will tell you. Preferring layout APIs without default arguments is still the
+   cheaper habit.
 4. **[enforced by the build — AGP 9 refuses the mix]** **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
    not `com.android.library`.** AGP 9 disallows mixing plain Android library
    with KMP.
@@ -370,7 +381,9 @@ than on a device.
 - the class-loader reload and its `ClassCastException`
 - Compose resource resolution through `FileSystemResourceReader`
 - that plugin bindings cannot leak into the host's container
-- androidx Compose version skew — `NoSuchMethodError` reproduces only against the host's versions
+- ~~androidx Compose version skew~~ — largely covered now: the harness is forced to the same
+  androidx Compose the host provides (build rule 3), so a `NoSuchMethodError` from that skew
+  reproduces here. What it still cannot cover is a host that has moved on without this repo noticing
 
 So the harness shrinks the device checklist; it does not empty it.
 
@@ -474,10 +487,20 @@ The entry point — the class `plugin.json` names — must:
   route to shrinking the `## Device scenarios` half of every spec.
 - Narrow the plugin's SDK access. This iteration hands over `D2` unrestricted; the next one restricts
   it to a server-declared subset, enforced inside the SDK rather than by the host.
-- Have the plugin-bundle Gradle plugin pin the host's androidx Compose version the way it already
-  pins `plugin-sdk` and `android-core`, so rule 3 stops being a manual concern. Note the sub-groups
-  do not share one version line (`material3` is on 1.4.x while `ui`/`foundation` are on 1.10.x), so a
-  group-wide force is wrong.
+- **Publish the host's androidx Compose version in `HostToolchain`.** The force and the gate exist
+  here now (build rule 3), but the *number* is still copied by hand into
+  `libs.versions.androidxCompose`, so a host that raises `compose` leaves every plugin silently
+  compiling against the wrong one. `HostToolchain` already carries `KOTLIN`, `COMPOSE` (the CMP
+  plugin version — not this one), `COMPILE_SDK`, `JVM_TARGET`, `PLUGIN_SDK_VERSION` and
+  `DHIS2_SDK_VERSION`; one more constant closes it for every plugin project rather than this one.
+  Note the sub-groups do not share a version line (`material3` is on 1.4.x while
+  `ui`/`foundation`/`runtime`/`animation` are on 1.10.x), so it must be a specific value, not a
+  group-wide force.
+- **Reconcile `dhis2AndroidCore` with `HostToolchain.DHIS2_SDK_VERSION`.** The catalogue pins
+  `1.15.0-20260821.111928-77` for the harness while the bundle plugin injects
+  `1.15.0-20260904.094227-87` into `:plugin` — so the harness builds a `D2` from a different SDK
+  build than the plugin is compiled against, which is the one thing the harness exists to de-risk.
+  The `plugin-sdk-test` item below is the real fix; until then it is worth at least detecting.
 - Add a `jvm("desktop")` target and a `desktop/plugin.jar` bundle subdir once
   a Desktop host exists.
 - Per-publisher cert allow-list in the Capture App's `PluginVerifier`.
