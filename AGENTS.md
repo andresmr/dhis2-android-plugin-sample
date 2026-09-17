@@ -363,11 +363,22 @@ the one case `MainActivity`'s on-screen note is about.
 Use a development server. The plugin reads only — but the harness logs in as a real user and syncs
 a real database onto the device, which is not something to point at production.
 
-Then `./gradlew :app:installDebug`. On first run it instantiates `D2`, logs in, downloads metadata
-and then **tracker data** — metadata alone brings programmes and stages but no enrolments, and a
-plugin rendering real structure over zero rows looks like a plugin bug. That first run takes minutes;
-afterwards the database is on the device and startup is immediate. Every step is named on screen, so
-a slow run is distinguishable from a stuck one.
+Then `./gradlew :app:installDebug`. On first run it instantiates `D2`, logs in and downloads
+metadata. Whether it goes on to download **tracker data** is the hosted module's call, declared in
+its `plugin.json`:
+
+```json
+"harness": { "trackerData": true }
+```
+
+Set it for a plugin that reads enrolments, events or tracked entities — metadata alone brings
+programmes and stages but no rows, and such a plugin rendering real structure over zero rows looks
+like a plugin bug. Leave it out otherwise: the download takes minutes, and a plugin counting
+programmes gains nothing from it but the wait and a line on screen naming a programme it never reads.
+The seed leaves it out; `examples/program-summary` sets it.
+
+That first run takes minutes; afterwards the database is on the device and startup is immediate.
+Every step is named on screen, so a slow run is distinguishable from a stuck one.
 
 It renders the entry point's `content()` itself, not just the card, by reproducing the host's private
 Koin container (`PluginHost`) — a harness whose DI differs from the host's proves the wrong thing.

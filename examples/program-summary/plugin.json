@@ -6,7 +6,12 @@
   "package": "org.dhis2.mobile.plugin.sample",
   "entryPoint": "ProgramOverviewPlugin",
   "version": "1.7.0",
-  "injectionPoints": ["HOME_ABOVE_PROGRAM_LIST"],
+  "injectionPoints": [
+    "HOME_ABOVE_PROGRAM_LIST"
+  ],
+  "harness": {
+    "trackerData": true
+  },
   "conventions": {
     "sdkAllowed": [
       "examples/program-summary/src/androidMain/kotlin/{packagePath}/{entryPoint}.kt",

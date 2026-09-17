@@ -16,7 +16,8 @@ sealed interface HarnessState {
 
     data class Working(val step: String) : HarnessState
 
-    data class Ready(val d2: D2, val programUid: String) : HarnessState
+    /** [programUid] is null when the plugin does not need tracker data, so none was downloaded. */
+    data class Ready(val d2: D2, val programUid: String?) : HarnessState
 
     data class Failed(val step: String, val message: String) : HarnessState
 }
@@ -61,6 +62,12 @@ class HarnessSession(private val context: Context) {
                 d2.metadataModule().blockingDownload()
             }
         } ?: return@withContext failure
+
+        // Only for a plugin that reads rows. Downloading tracker data takes minutes on a first run,
+        // and a plugin counting programmes gets nothing from it but the wait — plus a line on screen
+        // about a programme it never looks at, which is worse than slow: it is misleading.
+        // Declared per module in plugin.json, as `harness.trackerData`.
+        if (!BuildConfig.HARNESS_TRACKER_DATA) return@withContext HarnessState.Ready(d2, null)
 
         val programUid = resolveProgramUid(d2)
             ?: return@withContext HarnessState.Failed(
