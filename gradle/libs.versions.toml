@@ -23,10 +23,10 @@ androidxCompose = "1.10.6"
 # the plugin modules and a real dependency only in the harness, which is what stands in for the host
 # locally. A third hand-mirrored host fact — see the backlog.
 #
-# 1.0.0-SNAPSHOT is published, but the Capture App is on 0.8.0. Compiling against the newer one and
-# meeting the older at runtime is the NoSuchMethodError trap with a major version behind it, so this
-# tracks the host and not the newest.
-designSystem = "0.8.0-SNAPSHOT"
+# Track the host, whatever that is — not the newest published. Compiling against a newer design
+# system than the host provides and meeting the older one at runtime is the NoSuchMethodError trap
+# with a major version behind it.
+designSystem = "1.0.0-SNAPSHOT"
 pluginSdk = "0.1.3-SNAPSHOT"
 # Only the harness app declares the SDK; :plugin gets it from the bundle plugin at the host's
 # version. Keep this equal to what that plugin injects — see AGENTS.md.
@@ -36,12 +36,16 @@ pluginSdk = "0.1.3-SNAPSHOT"
 # compiled against would quietly stop it being evidence of anything.
 #
 # It cannot be read automatically: HostToolchain is `internal`, so a plugin author's build cannot see
-# it. Which is also how this value got set WRONG once — a stale plugin-sdk-gradle in ~/.m2, published
-# from some other Capture App state, injected a version the plugin-system branch never declared, and
-# the gate dutifully reported the catalogue as the thing at fault. If they disagree, check the branch
-# before trusting ~/.m2: `git show origin/poc/plugin-system:gradle/libs.versions.toml | grep dhis2sdk`,
-# and republish. See the backlog in AGENTS.md.
-dhis2AndroidCore = "1.15.0-20260821.111928-77"
+# it. When this and :plugin disagree, the thing to distrust is your *branch ref*, not ~/.m2: a
+# `git fetch` of one branch does not update a remote-tracking ref that a force-push has rewritten, so
+# `git show origin/poc/plugin-system:…` can quietly describe a tip that no longer exists. Confirm
+# against the server before changing this value:
+#
+#     git ls-remote origin poc/plugin-system          # the real tip
+#     git rev-parse origin/poc/plugin-system          # what you think it is
+#
+# then re-fetch with --force and republish plugin-sdk-gradle. See the backlog in AGENTS.md.
+dhis2AndroidCore = "1.15.0-20260904.094227-87"
 desugarJdkLibs = "2.1.5"
 # Must match the Capture App host's — the plugin DEX resolves these from the host's class loader.
 koin = "4.1.1"
