@@ -72,7 +72,15 @@ class MainActivity : ComponentActivity() {
                                 HarnessMessage(
                                     title = "Connected — ${BuildConfig.PLUGIN_NAME}",
                                     body = "Entry point ${BuildConfig.PLUGIN_ENTRY_POINT}\n" +
-                                        "Downloaded tracker data for programme ${current.programUid}",
+                                        when (val programUid = current.programUid) {
+                                            // Only mention a programme when one was actually
+                                            // downloaded. Naming one a plugin never reads is how a
+                                            // developer concludes the harness picked the wrong thing.
+                                            null -> "Metadata only — this plugin does not read " +
+                                                "tracker data (harness.trackerData in plugin.json)"
+
+                                            else -> "Downloaded tracker data for programme $programUid"
+                                        },
                                 )
                                 when (val loaded = rememberPlugin()) {
                                     is PluginLoad.Failed -> HarnessMessage(

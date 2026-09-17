@@ -56,6 +56,12 @@ fun identityAt(relativePath: String): Map<String, String> {
 
     val pkg = required("package")
     val entryPoint = required("entryPoint")
+
+    // Optional, harness-only, and false unless a module says otherwise: downloading tracker data
+    // takes minutes and is wasted on a plugin that never reads a row.
+    @Suppress("UNCHECKED_CAST")
+    val harness = (json["harness"] as? Map<String, Any>).orEmpty()
+    val trackerData = (harness["trackerData"] as? Boolean) ?: false
     // Derived here and never stored in the file: a value written down beside the one it comes from
     // is a second copy, and two copies is how they drift apart.
     return mapOf(
@@ -68,6 +74,7 @@ fun identityAt(relativePath: String): Map<String, String> {
         "dhis2PluginVersion" to required("version"),
         "dhis2ResourcePackage" to "$pkg.generated.resources",
         "dhis2HarnessApplicationId" to "$pkg.harness",
+        "dhis2HarnessTrackerData" to trackerData.toString(),
     )
 }
 

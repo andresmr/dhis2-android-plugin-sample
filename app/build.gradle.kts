@@ -49,6 +49,7 @@ val dhis2PluginEntryPointFqcn: String by extra
 val dhis2PluginVersion: String by extra
 val dhis2ResourcePackage: String by extra
 val dhis2HarnessApplicationId: String by extra
+val dhis2HarnessTrackerData: String by extra
 
 // Must equal :plugin's packageOfResClass, or the staged assets land at a path CMP's reader never
 // looks in and every Res.string.* resolves to nothing — with no error anywhere. Both come from
@@ -122,6 +123,10 @@ android {
         buildConfigField("String", "PLUGIN_ID", "\"$dhis2PluginId\"")
         buildConfigField("String", "PLUGIN_ENTRY_POINT", "\"$dhis2PluginEntryPointFqcn\"")
         buildConfigField("String", "PLUGIN_VERSION", "\"$dhis2PluginVersion\"")
+
+        // Whether the hosted plugin needs enrolments and tracked entities, from its plugin.json.
+        // The seed counts programmes, so metadata is enough and it skips a multi-minute download.
+        buildConfigField("boolean", "HARNESS_TRACKER_DATA", dhis2HarnessTrackerData)
     }
 
     buildFeatures {
