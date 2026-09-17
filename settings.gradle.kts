@@ -62,6 +62,13 @@ fun identityAt(relativePath: String): Map<String, String> {
     @Suppress("UNCHECKED_CAST")
     val harness = (json["harness"] as? Map<String, Any>).orEmpty()
     val trackerData = (harness["trackerData"] as? Boolean) ?: false
+
+    // Both reach the generated plugin-config.json and nothing else. Carried as text because this
+    // map is flat Strings by design — plugin/build.gradle.kts parses slotConfig back with the same
+    // JsonSlurper that read it, rather than either file growing a second shape.
+    @Suppress("UNCHECKED_CAST")
+    val injectionPoints = (json["injectionPoints"] as? List<String>).orEmpty()
+    val slotConfig = (json["slotConfig"] as? Map<String, Any>).orEmpty()
     // Derived here and never stored in the file: a value written down beside the one it comes from
     // is a second copy, and two copies is how they drift apart.
     return mapOf(
@@ -75,6 +82,8 @@ fun identityAt(relativePath: String): Map<String, String> {
         "dhis2ResourcePackage" to "$pkg.generated.resources",
         "dhis2HarnessApplicationId" to "$pkg.harness",
         "dhis2HarnessTrackerData" to trackerData.toString(),
+        "dhis2InjectionPoints" to injectionPoints.joinToString(","),
+        "dhis2SlotConfigJson" to groovy.json.JsonOutput.toJson(slotConfig),
     )
 }
 

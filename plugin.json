@@ -7,8 +7,14 @@
   "entryPoint": "MyPlugin",
   "version": "0.1.0",
   "injectionPoints": [
-    "HOME_ABOVE_PROGRAM_LIST"
+    "HOME_ABOVE_PROGRAM_LIST",
+    "DATA_SET_INSTANCE_CONTENT"
   ],
+  "slotConfig": {
+    "DATA_SET_INSTANCE_CONTENT": {
+      "dataSetUids": ["BfMAe6Itzgt"]
+    }
+  },
   "harness": {
     "trackerData": false
   },

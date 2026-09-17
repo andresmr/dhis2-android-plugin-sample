@@ -48,14 +48,36 @@
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-.][0-9A-Za-z.-]+)?$"
     },
     "injectionPoints": {
-      "description": "Host slots this plugin renders in. plugin-sdk-gradle hardcodes the list it writes into plugin-config.json, so HOME_ABOVE_PROGRAM_LIST is the only value that is not a lie today; check-identity.py enforces that.",
+      "description": "Host slots this plugin renders in, written into the generated plugin-config.json. Only slots plugin-sdk defines are honoured \u2014 an app that has never heard of one drops it when it reads the config, leaving the plugin rendering nowhere. check-identity.py enforces the list.",
       "type": "array",
       "items": {
         "enum": [
-          "HOME_ABOVE_PROGRAM_LIST"
+          "HOME_ABOVE_PROGRAM_LIST",
+          "DATA_SET_INSTANCE_CONTENT"
         ]
       },
       "minItems": 1
+    },
+    "slotConfig": {
+      "description": "Per-slot configuration, keyed by injection point, written into the generated plugin-config.json. Replacement slots render nowhere until it says which objects they apply to. A rendering filter, never an access grant \u2014 it narrows nothing about what the plugin can read or write.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DATA_SET_INSTANCE_CONTENT": {
+          "description": "Which data set instances this plugin draws the body of. An empty list replaces nothing, so it doubles as a kill switch that does not require deleting the plugin's entry.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dataSetUids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9]{10}$"
+              }
+            }
+          }
+        }
+      }
     },
     "conventions": {
       "description": "Where this plugin's own architecture rules apply. {packagePath} and {entryPoint} are expanded. tools/check-rules.py reads these instead of hardcoding filenames.",

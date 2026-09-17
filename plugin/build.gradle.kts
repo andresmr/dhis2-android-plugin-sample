@@ -19,6 +19,8 @@ val dhis2PluginPackage: String by extra
 val dhis2PluginEntryPointFqcn: String by extra
 val dhis2PluginVersion: String by extra
 val dhis2ResourcePackage: String by extra
+val dhis2InjectionPoints: String by extra
+val dhis2SlotConfigJson: String by extra
 
 // The only plugin-specific knob, and it lives in plugin.json rather than here. Everything else about
 // the plugin — its id, entry-point class, injection points and data scope — lives in the DHIS2
@@ -134,10 +136,32 @@ val pinnedBuildTools: File = File(androidSdkDirectory, "build-tools/$pluginBuild
 pluginBundle {
     pluginId = dhis2PluginId
     entryPoint = dhis2PluginEntryPointFqcn
+    // Left alone when plugin.json declares none, so the extension's own default still applies.
+    dhis2InjectionPoints
+        .split(",")
+        .filter { it.isNotBlank() }
+        .takeIf { it.isNotEmpty() }
+        ?.let { injectionPoints = it }
+    // A replacement slot renders nowhere until this says which objects it applies to, so it comes
+    // from plugin.json rather than being typed into the generated config after every build.
+    slotConfig = parseSlotConfig(dhis2SlotConfigJson)
 
     d8Executable = File(pinnedBuildTools, "d8")
     apksignerExecutable = File(pinnedBuildTools, "apksigner")
 }
+
+/**
+ * `slotConfig` from plugin.json, in the shape `pluginBundle` takes: slot to field to values.
+ *
+ * Read back with JsonSlurper rather than threaded through settings.gradle.kts as a nested map,
+ * because the identity map there is flat Strings on purpose — one shape, one place it is built.
+ */
+@Suppress("UNCHECKED_CAST")
+fun parseSlotConfig(json: String): Map<String, Map<String, List<String>>> =
+    (groovy.json.JsonSlurper().parseText(json) as Map<String, Any>)
+        .mapValues { (_, fields) ->
+            (fields as Map<String, Any>).mapValues { (_, values) -> (values as List<String>) }
+        }
 
 // Note what is NOT here any more: the wiring that puts compileOnly dependencies on the JVM test
 // runtime classpath. `plugin-sdk` and `android-core` are compileOnly because the host provides them,

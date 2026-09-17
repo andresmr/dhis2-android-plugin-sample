@@ -6,7 +6,7 @@ import org.dhis2.mobile.plugin.template.model.PluginSummary
 import org.hisp.dhis.mobile.ui.designsystem.theme.DHIS2Theme
 
 /**
- * `@Preview`s of [PluginCard], against state you supply.
+ * `@Preview`s of [PluginCard] and [DataSetBodyPlaceholder], against state you supply.
  *
  * The fastest loop for pure UI work: a preview needs no server, no login and no sync. That is what
  * architecture rule 2 buys — composables take plain data and callbacks, never a
@@ -43,6 +43,20 @@ private fun FailedPreview() {
     DHIS2Theme {
         PluginCard(
             state = PluginUiState(summary = SummaryState.Failed("[UNEXPECTED] no database")),
+            pluginVersion = PREVIEW_VERSION,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Data set body", heightDp = 420)
+@Composable
+private fun DataSetBodyPreview() {
+    DHIS2Theme {
+        DataSetBodyPlaceholder(
+            dataSetUid = "lyLU2wR22tC",
+            periodId = "202401",
+            organisationUnitUid = "DiszpKrYNg8",
+            attributeOptionComboUid = "HllvX50cXC0",
             pluginVersion = PREVIEW_VERSION,
         )
     }

@@ -14,6 +14,11 @@ import org.hisp.dhis.android.core.D2
  * from `plugin.json` through `BuildConfig`, so the harness hands the plugin the same id, version and
  * entry point the real dataStore config would. A plugin that reads `pluginMetadata.version` (this
  * one does, for the chip on the card) therefore sees a real value here.
+ *
+ * [injectionPoints] is the one field with nothing behind it. The harness renders whichever entry
+ * point `harness.module` names, at whichever slot `HARNESS_SLOT` selects, with no registry doing
+ * the filtering the host's does — so this only keeps the context from claiming a slot the plugin is
+ * not currently being rendered at. Keep it in step with `HARNESS_SLOT`.
  */
 class HarnessPluginContext(
     override val sdk: D2,
@@ -22,6 +27,6 @@ class HarnessPluginContext(
         id = BuildConfig.PLUGIN_ID,
         version = BuildConfig.PLUGIN_VERSION,
         entryPoint = BuildConfig.PLUGIN_ENTRY_POINT,
-        injectionPoints = listOf(InjectionPoint.HOME_ABOVE_PROGRAM_LIST),
+        injectionPoints = listOf(InjectionPoint.DATA_SET_INSTANCE_CONTENT),
     )
 }

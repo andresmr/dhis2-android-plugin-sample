@@ -23,6 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from identity import (  # noqa: E402
+    CONFIGURED_INJECTION_POINTS,
     SUPPORTED_INJECTION_POINTS,
     TEMPLATE,
     is_pristine,
@@ -140,16 +141,30 @@ def check_no_template_residue(problems, identity):
 
 
 def check_injection_points(problems, identity):
-    """A field the bundle cannot honour would be a claim nothing checks."""
+    """A slot the host does not define, or a replacement slot nobody configured, renders nothing."""
     points = identity.get("injectionPoints") or SUPPORTED_INJECTION_POINTS
     unsupported = [p for p in points if p not in SUPPORTED_INJECTION_POINTS]
     if unsupported:
         problems.append(
-            "plugin.json's injectionPoints names %s. plugin-sdk-gradle's DataStoreSnippet "
-            "hardcodes %s and PluginBundleExtension exposes no injectionPoints property, so the "
-            "generated plugin-config.json would say otherwise. Add the property upstream first."
+            "plugin.json's injectionPoints names %s, which plugin-sdk does not define. Known slots "
+            "are %s; anything else is dropped by the host when it reads the config, so the plugin "
+            "renders nowhere and nothing says why."
             % (", ".join(unsupported), SUPPORTED_INJECTION_POINTS)
         )
+
+    slot_config = identity.get("slotConfig") or {}
+    for slot, field in CONFIGURED_INJECTION_POINTS.items():
+        if slot not in points:
+            continue
+        configured = (slot_config.get(slot) or {}).get(field) or []
+        if not configured:
+            # Not fatal: an empty list is also how a plugin is switched off without deleting its
+            # entry. But it is worth saying out loud, because the symptom on device — the host's
+            # own screen, unchanged — looks exactly like the plugin failing to load.
+            print(
+                "  note: %s is declared but slotConfig.%s.%s is empty, so it replaces nothing. "
+                "Add the UIDs it applies to." % (slot, slot, field)
+            )
 
 
 def main():
