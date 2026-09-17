@@ -1,0 +1,168 @@
+import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.compose)
+    // Packaging: registers `buildPluginBundle`, adds plugin-sdk as compileOnly at the version the
+    // host publishes, and checks this module's toolchain against that host. Resolved from Maven
+    // Local while the plugin system is in preview — publish it from the Capture App repo with
+    // `./gradlew :plugin-sdk:publishToMavenLocal :plugin-sdk-gradle:publishToMavenLocal`.
+    alias(libs.plugins.dhis2.pluginBundle)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// An example plugin. Not shipped, and deleted from a fork by ./init.sh.
+//
+// Identical in shape to plugin/build.gradle.kts on purpose — an example whose build differs from
+// the one a forker gets proves the wrong thing. Its identity comes from the plugin.json beside this
+// file rather than the one at the repo root, which is what lets it keep its own package and version
+// while a fork renames everything else.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Identity comes from this module's plugin.json, via settings.gradle.kts. Nothing below is written
+// twice.
+val dhis2PluginId: String by extra
+val dhis2PluginPackage: String by extra
+val dhis2PluginEntryPointFqcn: String by extra
+val dhis2PluginVersion: String by extra
+val dhis2ResourcePackage: String by extra
+
+// The only plugin-specific knob, and it lives in plugin.json rather than here. Everything else about
+// the plugin — its id, entry-point class, injection points and data scope — lives in the DHIS2
+// server dataStore config, which is the single source of truth. The plugin's Kotlin declares none
+// of it. Bump this to invalidate the device cache: the Capture App caches bundles by
+// {id}-{version}.zip, so shipping a change at an unchanged version keeps the old code running.
+version = dhis2PluginVersion
+
+kotlin {
+    android {
+        namespace = dhis2PluginPackage
+        compileSdk = 37
+        minSdk = 26
+        compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
+        // Opt in to a JVM test target for commonTest. Without this the AGP KMP library plugin
+        // registers no test task at all and `commonTest` is silently never compiled or run.
+        withHostTestBuilder {}.configure {}
+    }
+    // Future Desktop support — add `jvm("desktop")` and a desktop/ subtree to the bundle.
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                // plugin-sdk is added as compileOnly by the plugin-bundle plugin, at the version of
+                // the host that will load this DEX — it is never declared here.
+                // All of these are provided by the Capture App at runtime via
+                // InMemoryDexClassLoader's parent class loader chain — NOT bundled
+                // into the plugin DEX.
+                compileOnly(compose.runtime)
+                compileOnly(compose.ui)
+                compileOnly(compose.material3)
+                // Declared even though `compose.material3` already drags it in transitively, at a
+                // version nothing here chooses. PluginCard imports foundation directly (Column,
+                // verticalScroll, heightIn), and rule 3 is about exactly this: the host declares
+                // androidx `compose` separately and higher, so a defaulted overload compiled
+                // against a floating foundation is how `NoSuchMethodError: weight$default` happened.
+                compileOnly(compose.foundation)
+                // Must be `implementation`: the Compose Resources plugin uses this
+                // declaration as an opt-in signal to generate the `Res` accessor
+                // class. With `compileOnly` the generator is skipped and `Res.string.*`
+                // imports fail to resolve. The actual runtime classes are still
+                // resolved from the host's class loader.
+                implementation(compose.components.resources)
+
+                // Host-provided, so compileOnly — same rule as compose.*. A ViewModel needs the
+                // lifecycle artifact; the runtime classes come from the Capture App.
+                compileOnly(libs.androidx.lifecycle.viewmodel)
+                // The DHIS2 design system, so a plugin looks like the app it renders inside.
+                // compileOnly for the same reason as compose.*: the Capture App carries it on its
+                // runtime classpath, and a second copy in the bundle is DEX bloat at best and a
+                // ClassCastException at worst.
+                compileOnly(libs.dhis2.mobile.designsystem)
+
+                compileOnly(libs.koin.core)
+                compileOnly(libs.koin.compose)
+                compileOnly(libs.koin.compose.viewmodel)
+            }
+        }
+
+        val androidMain by getting {
+            dependencies {
+                // For the @Previews beside the card. compileOnly, like everything else here: the
+                // annotation is CLASS-retention, so nothing needs it at runtime, and the bundle
+                // must carry only this module's own classes.
+                compileOnly(libs.compose.ui.tooling.preview)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.test.coroutines)
+                // Real dependencies here, not compileOnly: a unit test has no host to borrow from.
+                implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.koin.core)
+            }
+        }
+    }
+}
+
+// The bundle plugin takes d8 and apksigner from the *newest installed* build-tools, which differs
+// between a CI runner and a laptop and changes the DEX bytes. Pinned here rather than in CI because
+// reproducibility is this project's claim, not the workflow's. Raising it moves the checksum.
+val pluginBuildToolsVersion = "36.1.0"
+
+/** AGP's own resolution order. */
+val androidSdkDirectory: File = run {
+    val local = Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }.getProperty("sdk.dir")
+
+    val path = local
+        ?: System.getenv("ANDROID_HOME")
+        ?: System.getenv("ANDROID_SDK_ROOT")
+        ?: error("No Android SDK found: set sdk.dir in local.properties, or ANDROID_HOME.")
+
+    File(path)
+}
+
+val pinnedBuildTools: File = File(androidSdkDirectory, "build-tools/$pluginBuildToolsVersion").also {
+    // Named at configuration time, rather than a bare missing-file error inside the bundle task.
+    require(it.isDirectory) {
+        "build-tools $pluginBuildToolsVersion is not installed at $it — " +
+            "install it with: sdkmanager --install \"build-tools;$pluginBuildToolsVersion\""
+    }
+}
+
+// Fills in the two fields of the generated `plugin-config.json` that a build cannot work out for
+// itself, so the file is postable to the dataStore as it is instead of needing the same two edits
+// after every build. The bundle carries neither value — the server dataStore stays the single
+// source of truth for this plugin's identity, and the host reads both from there.
+pluginBundle {
+    pluginId = dhis2PluginId
+    entryPoint = dhis2PluginEntryPointFqcn
+
+    d8Executable = File(pinnedBuildTools, "d8")
+    apksignerExecutable = File(pinnedBuildTools, "apksigner")
+}
+
+// Note what is NOT here any more: the wiring that puts compileOnly dependencies on the JVM test
+// runtime classpath. `plugin-sdk` and `android-core` are compileOnly because the host provides them,
+// so a JVM test touching either used to die with NoClassDefFoundError until this file undid that by
+// hand. The plugin-bundle plugin does it now — it is the plugin system's arrangement, so undoing it
+// for tests is the plugin system's job, not every plugin author's.
+
+compose.resources {
+    // Override default (which derives from the root project name — gives an ugly
+    // backtick-escaped package when the project name contains spaces).
+    //
+    // This exact string is also the directory name inside the bundle
+    // (android/composeResources/<packageOfResClass>/…) and the path :app stages assets into. All
+    // three come from plugin.json, because a disagreement between them raises no error at all:
+    // green build, valid bundle, and every Res.string.* silently empty at runtime.
+    packageOfResClass = dhis2ResourcePackage
+    publicResClass = true
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "../../tools/plugin.schema.json",
+  "name": "Program overview",
+  "slug": "example-program-summary",
+  "pluginId": "org.dhis2.mobile.plugin.sample",
+  "package": "org.dhis2.mobile.plugin.sample",
+  "entryPoint": "ProgramOverviewPlugin",
+  "version": "1.7.0",
+  "injectionPoints": ["HOME_ABOVE_PROGRAM_LIST"],
+  "conventions": {
+    "sdkAllowed": [
+      "examples/program-summary/src/androidMain/kotlin/{packagePath}/{entryPoint}.kt",
+      "examples/program-summary/src/androidMain/kotlin/{packagePath}/data/**/*.kt"
+    ],
+    "repositoryInterfaces": [
+      "examples/program-summary/src/commonMain/kotlin/{packagePath}/repository/*.kt"
+    ],
+    "boundedComposables": [
+      "examples/program-summary/src/commonMain/kotlin/{packagePath}/ui/PluginCard.kt"
+    ]
+  },
+  "template": {
+    "source": "dhis2/dhis2-android-plugin-sample",
+    "formatVersion": 1,
+    "initialised": true
+  }
+}

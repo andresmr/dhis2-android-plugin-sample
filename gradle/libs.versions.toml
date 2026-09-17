@@ -9,16 +9,48 @@ activityCompose = "1.13.0"
 kotlin = "2.4.10"
 composeBom = "2024.09.00"
 composeMultiplatform = "1.10.3"
+# androidx Compose, as the HOST provides it at runtime — NOT what Compose Multiplatform brings.
+# CMP 1.10.3 pulls androidx Compose 1.10.5 transitively; the Capture App declares 1.10.6 directly
+# and wins in its own resolution, so the classes a plugin actually meets are 1.10.6. Compiling
+# against 1.10.5 is how `NoSuchMethodError: weight$default` happened.
+#
+# This is a hand-mirrored host fact, and the only one left: plugin-sdk-gradle's HostToolchain
+# publishes KOTLIN, COMPOSE (the CMP plugin version), COMPILE_SDK, JVM_TARGET, PLUGIN_SDK_VERSION
+# and DHIS2_SDK_VERSION — but not this. Until it does, raising the host's `compose` means raising
+# this too. See the backlog in AGENTS.md.
+androidxCompose = "1.10.6"
+# The DHIS2 design system, as the HOST provides it. Host-provided like Compose, so `compileOnly` in
+# the plugin modules and a real dependency only in the harness, which is what stands in for the host
+# locally. A third hand-mirrored host fact — see the backlog.
+#
+# Track the host, whatever that is — not the newest published. Compiling against a newer design
+# system than the host provides and meeting the older one at runtime is the NoSuchMethodError trap
+# with a major version behind it.
+designSystem = "1.0.0-SNAPSHOT"
 pluginSdk = "0.1.3-SNAPSHOT"
 # Only the harness app declares the SDK; :plugin gets it from the bundle plugin at the host's
-# version. Keep this equal to what that plugin injects — see CLAUDE.md.
-dhis2AndroidCore = "1.15.0-20260821.111928-77"
+# version. Keep this equal to what that plugin injects — see AGENTS.md.
+# The DHIS2 SDK, as the HOST provides it — the harness only. :plugin never declares it: the bundle
+# plugin injects it `strictly` from HostToolchain, and `./gradlew checkHostAlignment` fails when this
+# drifts from what :plugin resolved. The harness building its D2 from a different SDK than the plugin
+# compiled against would quietly stop it being evidence of anything.
+#
+# It cannot be read automatically: HostToolchain is `internal`, so a plugin author's build cannot see
+# it. When this and :plugin disagree, the thing to distrust is your *branch ref*, not ~/.m2: a
+# `git fetch` of one branch does not update a remote-tracking ref that a force-push has rewritten, so
+# `git show origin/poc/plugin-system:…` can quietly describe a tip that no longer exists. Confirm
+# against the server before changing this value:
+#
+#     git ls-remote origin poc/plugin-system          # the real tip
+#     git rev-parse origin/poc/plugin-system          # what you think it is
+#
+# then re-fetch with --force and republish plugin-sdk-gradle. See the backlog in AGENTS.md.
+dhis2AndroidCore = "1.15.0-20260904.094227-87"
 desugarJdkLibs = "2.1.5"
 # Must match the Capture App host's — the plugin DEX resolves these from the host's class loader.
 koin = "4.1.1"
 # Test-only, so free to differ from the host.
 coroutinesTest = "1.10.2"
-turbine = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -34,6 +66,7 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 plugin-sdk = { module = "org.dhis2.mobile:plugin-sdk", version.ref = "pluginSdk" }
 dhis2-android-core = { module = "org.hisp.dhis:android-core", version.ref = "dhis2AndroidCore" }
+dhis2-mobile-designsystem = { module = "org.hisp.dhis.mobile:designsystem", version.ref = "designSystem" }
 desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 
 # Provided by the host at runtime — compileOnly in :plugin.
@@ -43,7 +76,10 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 
 # Test-only.
 test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
-test-turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+# @Preview, for the plugin modules. compileOnly there: the annotation is CLASS-retention, so
+# its absence at runtime is harmless, and a plugin bundle must carry nothing but its own code.
+compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "composeMultiplatform" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version = "2.9.4" }
 
 [plugins]

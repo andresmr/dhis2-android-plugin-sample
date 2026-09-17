@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dhis2/dhis2-android-plugin-sample/tools/plugin.schema.json",
+  "title": "DHIS2 Android plugin identity",
+  "description": "Who this plugin is. The build reads it in settings.gradle.kts; tools/identity.py reads it for the Python gates. Nothing else may repeat these values — tools/check-identity.py fails when the source tree and this file disagree.",
+  "type": "object",
+  "required": ["name", "slug", "pluginId", "package", "entryPoint", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": {
+      "description": "Display name, shown in the harness and used as the card's default title.",
+      "type": "string",
+      "minLength": 1
+    },
+    "slug": {
+      "description": "Gradle rootProject.name. Kebab-case: a space here reaches Compose Resources as a backtick-escaped package.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "pluginId": {
+      "description": "Reverse-domain id the server dataStore config names. Hyphens allowed, unlike the Kotlin package.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9][a-z0-9-]*)+$"
+    },
+    "package": {
+      "description": "Kotlin package root. Also the Android namespace, and the stem of resourcePackage and harnessApplicationId.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "entryPoint": {
+      "description": "Simple class name of the Dhis2Plugin implementation. Its FQCN is package + '.' + entryPoint.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*$"
+    },
+    "version": {
+      "description": "The plugin's version. The Capture App caches bundles by {id}-{version}.zip, so a change shipped at an unchanged version keeps running the old code on device.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-.][0-9A-Za-z.-]+)?$"
+    },
+    "injectionPoints": {
+      "description": "Host slots this plugin renders in. plugin-sdk-gradle hardcodes the list it writes into plugin-config.json, so HOME_ABOVE_PROGRAM_LIST is the only value that is not a lie today; check-identity.py enforces that.",
+      "type": "array",
+      "items": { "enum": ["HOME_ABOVE_PROGRAM_LIST"] },
+      "minItems": 1
+    },
+    "conventions": {
+      "description": "Where this plugin's own architecture rules apply. {packagePath} and {entryPoint} are expanded. tools/check-rules.py reads these instead of hardcoding filenames.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sdkAllowed": {
+          "description": "The only files permitted to mention org.hisp.dhis. Adding one is a decision worth a commit message.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "repositoryInterfaces": {
+          "description": "Interfaces whose every function must return Result — an exception reaching the host composition takes the enclosing screen with it.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "boundedComposables": {
+          "description": "Composables that must cap their own height, because the host renders them in a non-scrolling column.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string" },
+        "formatVersion": { "type": "integer" },
+        "initialised": {
+          "description": "False while ./init.sh is mid-run, so a crash leaves an unambiguously partial repo rather than a silently broken one.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

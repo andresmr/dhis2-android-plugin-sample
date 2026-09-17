@@ -40,8 +40,27 @@ fun harnessProperty(key: String): String = localProperties.getProperty(key).orEm
 // that pipeline, so we mimic what AGP normally does for CMP-library consumers.
 // ──────────────────────────────────────────────────────────────────────────────
 
-val pluginResourcePackage = "org.dhis2.mobile.plugin.sample.generated.resources"
-val pluginProject = project(":plugin")
+// Identity from plugin.json, via settings.gradle.kts. The harness never spells the plugin's
+// package, id or entry point itself — it is handed them, exactly as the Capture App is handed them
+// by the server dataStore.
+val dhis2PluginName: String by extra
+val dhis2PluginId: String by extra
+val dhis2PluginEntryPointFqcn: String by extra
+val dhis2PluginVersion: String by extra
+val dhis2ResourcePackage: String by extra
+val dhis2HarnessApplicationId: String by extra
+
+// Must equal :plugin's packageOfResClass, or the staged assets land at a path CMP's reader never
+// looks in and every Res.string.* resolves to nothing — with no error anywhere. Both come from
+// plugin.json, which is the only reason that sentence is now a fact rather than a hope.
+val pluginResourcePackage = dhis2ResourcePackage
+
+// Which plugin the harness hosts: your own :plugin, or one of the examples. Resolved in
+// settings.gradle.kts from `harness.module` in local.properties, which is also where the identity
+// above came from — so the module, its package and its entry point can never be from two different
+// plugins.
+val dhis2HarnessModule: String by extra
+val pluginProject = project(dhis2HarnessModule)
 
 abstract class StagePluginAssets : DefaultTask() {
     @get:InputDirectory
@@ -76,14 +95,17 @@ val stagePluginAssets by tasks.registering(StagePluginAssets::class) {
 }
 
 android {
-    namespace = "org.dhis2.mobile.plugin.sample.harness"
+    // Fixed and template-owned: this module is harness infrastructure and is never shipped, so
+    // its Kotlin package does not follow the fork's. Only applicationId carries the fork's identity,
+    // which is what lets two forks' harnesses sit on one device at once.
+    namespace = "org.dhis2.mobile.plugin.harness"
     // Must be >= the Capture App host's compileSdk, since plugin-sdk is compiled against it.
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "org.dhis2.mobile.plugin.sample.harness"
+        applicationId = dhis2HarnessApplicationId
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -93,6 +115,13 @@ android {
         buildConfigField("String", "DHIS2_USERNAME", "\"${harnessProperty("dhis2.username")}\"")
         buildConfigField("String", "DHIS2_PASSWORD", "\"${harnessProperty("dhis2.password")}\"")
         buildConfigField("String", "PLUGIN_PROGRAM_UID", "\"${harnessProperty("dhis2.programUid")}\"")
+
+        // The plugin's identity, so MainActivity can load it by name the way the host does rather
+        // than importing its entry point. See MainActivity.kt.
+        buildConfigField("String", "PLUGIN_NAME", "\"$dhis2PluginName\"")
+        buildConfigField("String", "PLUGIN_ID", "\"$dhis2PluginId\"")
+        buildConfigField("String", "PLUGIN_ENTRY_POINT", "\"$dhis2PluginEntryPointFqcn\"")
+        buildConfigField("String", "PLUGIN_VERSION", "\"$dhis2PluginVersion\"")
     }
 
     buildFeatures {
@@ -135,11 +164,14 @@ androidComponents {
 // real DHIS2 Capture App host. NOT the Google AndroidX Compose BOM — those two ABIs
 // are incompatible and crash the plugin with NoSuchMethodError at composition time.
 dependencies {
-    implementation(project(":plugin"))
+    implementation(pluginProject)
     implementation(libs.plugin.sdk)
     // A real dependency here, not compileOnly: :app is the harness, not a shipped plugin, and it is
     // the thing that constructs the D2 the plugin is handed.
     implementation(libs.dhis2.android.core)
+    // Real, not compileOnly: :app is the harness, and the harness is what plays the host's part —
+    // it has to actually provide what the Capture App provides.
+    implementation(libs.dhis2.mobile.designsystem)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     // The harness has to reproduce the host's private container, because the plugin resolves its
     // ViewModel with koinViewModel() and would otherwise find no Koin at all.

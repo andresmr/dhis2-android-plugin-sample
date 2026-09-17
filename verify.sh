@@ -6,8 +6,9 @@
 # quietly skip half of it, and "done" then means the same thing in every session.
 #
 # Usage:
-#   ./verify.sh            # spec gate + rule gates + tests + bundle
+#   ./verify.sh            # spec gate + rule gates + tests + bundle, for your own :plugin
 #   ./verify.sh --cold     # same, but from a fresh Gradle home
+#   ./verify.sh --examples # also verify every module under examples/
 #
 # --cold re-resolves every dependency from scratch, so it catches stale local state. It is slow (a
 # few minutes) and worth it after touching settings.gradle.kts or the version catalogue.
@@ -20,12 +21,23 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+fail_early() { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
+
 BUNDLE_DIR="plugin/build/outputs/plugin-bundle"
 # Expanded below as ${GRADLE_ARGS[@]+...}: macOS ships bash 3.2, where `set -u` treats an empty
 # array as unbound and aborts. The += form keeps the args properly quoted.
 GRADLE_ARGS=()
 
-if [[ "${1:-}" == "--cold" ]]; then
+EXAMPLES=false
+for arg in "$@"; do
+  case "$arg" in
+    --examples) EXAMPLES=true ;;
+    --cold) ;;
+    *) fail_early "unknown argument: $arg  (--cold, --examples)" ;;
+  esac
+done
+
+if [[ "${1:-}" == "--cold" || "${2:-}" == "--cold" ]]; then
   COLD_ROOT="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$COLD_ROOT'" EXIT
@@ -54,30 +66,60 @@ else
   echo "  skipped: python3 not on PATH"
 fi
 
-# ------------------------------------------------------------- 2. this sample's own rules
+# ------------------------------------------------------------- 1b. identity
 
-# CLAUDE.md says it about androidMain: a rule whose only enforcement sits somewhere nothing can
-# reach "is not enforced, it is hoped for". That applies to CLAUDE.md itself, and an audit found
+# plugin.json drives the Android namespace, the bundle's entryPoint, the Compose Resources package
+# and the harness's applicationId. Nothing in Gradle checks that the Kotlin agrees with it: edit
+# `package` by hand and the build stays green, the bundle is signed, and the host fails at load
+# with ClassNotFoundException. That gap is the whole reason this step exists.
+step "Tree agrees with plugin.json"
+if command -v python3 >/dev/null 2>&1; then
+  # `|| IDENTITY_STATUS=$?` rather than a bare call: `set -e` would abort on exit 3, which is a
+  # state this script has to be able to report rather than die on.
+  IDENTITY_STATUS=0
+  python3 tools/check-identity.py || IDENTITY_STATUS=$?
+  # 3 is the pristine template, which is a legitimate state to verify in — it is what every fork
+  # starts from, and it has to build. 4 is a real disagreement.
+  if [[ $IDENTITY_STATUS -ne 0 && $IDENTITY_STATUS -ne 3 ]]; then
+    fail "plugin.json and the source tree disagree (see above)"
+  fi
+else
+  echo "  skipped: python3 not on PATH"
+fi
+
+# ------------------------------------------------------------- 2. this plugin's own rules
+
+# AGENTS.md says it about androidMain: a rule whose only enforcement sits somewhere nothing can
+# reach "is not enforced, it is hoped for". That applies to AGENTS.md itself, and an audit found
 # three rules the code had quietly stopped following.
 #
 # Only the rules specific to *this* plugin are checked here. The plugin system's own conventions —
 # the SDK out of shared source, host-provided dependencies compileOnly, rows capped before they are
 # enriched — moved into plugin-sdk-gradle, so every plugin project inherits them by applying the
 # bundle plugin rather than by copying this script. That is step 3.
-step "This sample's own rules"
+step "This plugin's own rules"
 if command -v python3 >/dev/null 2>&1; then
-  python3 tools/check-rules.py || fail "A rule of this sample's is broken (see above)"
+  python3 tools/check-rules.py || fail "A rule of this plugin's is broken (see above)"
 else
   echo "  skipped: python3 not on PATH"
 fi
 
 # ------------------------------------------- 3. the plugin system's conventions + unit tests
 
-# One Gradle invocation for both, so there is no second daemon warm-up. checkPluginConventions comes
-# from plugin-sdk-gradle; buildPluginBundle depends on it too, because a gate you can bypass by
-# packaging is not a gate.
-step "Plugin-system conventions + unit tests (commonTest + androidHostTest, JVM — no device)"
-./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} :plugin:checkPluginConventions :plugin:testAndroidHostTest
+# One Gradle invocation for all three, so there is no second daemon warm-up. checkPluginConventions
+# comes from plugin-sdk-gradle; buildPluginBundle depends on it too, because a gate you can bypass
+# by packaging is not a gate.
+#
+# checkHostAlignment is this repo's own, and covers the two host facts plugin-sdk-gradle does not
+# make readable: the androidx Compose version, and whether the harness agrees with :plugin about the
+# DHIS2 SDK. Compiling against a different Compose than the host provides fails at composition with
+# NoSuchMethodError; a harness on a different SDK build than the plugin quietly stops being evidence.
+# Neither says anything before a device.
+step "Plugin-system conventions + host alignment + unit tests (JVM — no device)"
+./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} \
+  :plugin:checkPluginConventions \
+  checkHostAlignment \
+  :plugin:testAndroidHostTest
 
 # ---------------------------------------------------------------- 4. the bundle
 
@@ -128,12 +170,35 @@ if [[ -f "$CONFIG" ]]; then
   sed 's/^/    /' "$CONFIG"
 fi
 
+# ---------------------------------------------------------------- 7. the examples
+
+# Off by default: they are not your plugin, and a forker who has deleted examples/ should not be
+# told about them. On, they are checked exactly as :plugin is — an example whose gates are weaker
+# than the ones it demonstrates would be teaching the wrong thing.
+if [[ "$EXAMPLES" == true ]]; then
+  shopt -s nullglob
+  for example in examples/*/; do
+    [[ -f "$example/build.gradle.kts" ]] || continue
+    name="$(basename "$example")"
+    step "Example: $name"
+    if command -v python3 >/dev/null 2>&1; then
+      python3 tools/check-specs.py --module "examples/$name" \
+        || fail "examples/$name: spec and tests disagree (see above)"
+    fi
+    ./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} \
+      ":examples:$name:checkPluginConventions" \
+      ":examples:$name:testAndroidHostTest" \
+      ":examples:$name:buildPluginBundle"
+  done
+  shopt -u nullglob
+fi
+
 printf '\n\033[32m✓ verified\033[0m\n'
 echo
 echo "Not covered by any of the above: every scenario under '## Device scenarios' in the spec."
 echo "A JVM test cannot construct a D2, so nothing here exercises a read or a write."
 echo
-echo "  ./gradlew :app:installDebug    runs the plugin against a real server (see CLAUDE.md)"
+echo "  ./gradlew :app:installDebug    runs the plugin against a real server (see AGENTS.md)"
 echo
 echo "That covers most of the checklist. What still needs the Capture App itself: the height budget,"
 echo "the class-loader reload, resource resolution, Koin isolation, and Compose version skew."

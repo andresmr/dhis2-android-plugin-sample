@@ -5,7 +5,7 @@
   the pipeline reads them by name, so a renamed section is one it does not read. An empty section is
   fine — it reads as "considered, nothing to say" rather than "forgotten".
 
-  Delete these comments as you go. Two complete examples sit beside this file.
+  Delete these comments as you go. A complete example sits in `examples/program-summary/specs/`.
 -->
 
 ## Intent
