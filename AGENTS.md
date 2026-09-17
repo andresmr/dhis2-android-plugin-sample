@@ -203,7 +203,7 @@ python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
 python3 tools/check-specs.py --module examples/program-summary    # the same, for an example
 python3 tools/check-rules.py           # this plugin's own rules, marked [checked] below (fast)
 ./gradlew :plugin:checkPluginConventions   # the plugin system's rules, marked [build] below
-./gradlew checkComposeAlignment        # androidx Compose matches what the host provides
+./gradlew checkHostAlignment           # Compose + DHIS2 SDK match what the host provides
 
 ./gradlew :plugin:buildPluginBundle    # signed zip → plugin/build/outputs/plugin-bundle/
 ./gradlew :plugin:testAndroidHostTest  # unit tests — commonTest AND androidHostTest, JVM, no device
@@ -239,7 +239,7 @@ cannot slip past it.
 
    The root `build.gradle.kts` now forces `androidx.compose.{animation,foundation,runtime,ui}` to
    `libs.versions.androidxCompose` in **every** module, harness included, and
-   `./gradlew checkComposeAlignment` reads the resolved versions back and fails when the force stops
+   `./gradlew checkHostAlignment` reads the resolved versions back and fails when the force stops
    applying. `material3` is deliberately excluded: androidx's sub-groups do not share one version
    line — material3 is on 1.4.x — so a force across `androidx.compose.*` would be wrong.
 
@@ -496,11 +496,13 @@ The entry point — the class `plugin.json` names — must:
   Note the sub-groups do not share a version line (`material3` is on 1.4.x while
   `ui`/`foundation`/`runtime`/`animation` are on 1.10.x), so it must be a specific value, not a
   group-wide force.
-- **Reconcile `dhis2AndroidCore` with `HostToolchain.DHIS2_SDK_VERSION`.** The catalogue pins
-  `1.15.0-20260821.111928-77` for the harness while the bundle plugin injects
-  `1.15.0-20260904.094227-87` into `:plugin` — so the harness builds a `D2` from a different SDK
-  build than the plugin is compiled against, which is the one thing the harness exists to de-risk.
-  The `plugin-sdk-test` item below is the real fix; until then it is worth at least detecting.
+
+  **`HostToolchain` is `internal`**, so today a plugin author's build cannot read *any* of it — not
+  the Compose version, not the SDK version. Making it public API, or surfacing it as a property on
+  the `pluginBundle` extension, is the single change that would let every plugin project stop
+  hand-mirroring host facts. `./gradlew checkHostAlignment` here is a workaround for its absence:
+  it compares the harness against `:plugin`'s injected resolution, which is the host's answer
+  arriving by the only route currently open.
 - Add a `jvm("desktop")` target and a `desktop/plugin.jar` bundle subdir once
   a Desktop host exists.
 - Per-publisher cert allow-list in the Capture App's `PluginVerifier`.

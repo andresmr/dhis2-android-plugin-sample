@@ -110,13 +110,15 @@ fi
 # comes from plugin-sdk-gradle; buildPluginBundle depends on it too, because a gate you can bypass
 # by packaging is not a gate.
 #
-# checkComposeAlignment is this repo's own, and covers the one host fact plugin-sdk-gradle does not
-# publish: the androidx Compose version. Compiling against a different one than the host provides
-# fails at composition with NoSuchMethodError and nothing before a device says so.
-step "Plugin-system conventions + Compose alignment + unit tests (JVM — no device)"
+# checkHostAlignment is this repo's own, and covers the two host facts plugin-sdk-gradle does not
+# make readable: the androidx Compose version, and whether the harness agrees with :plugin about the
+# DHIS2 SDK. Compiling against a different Compose than the host provides fails at composition with
+# NoSuchMethodError; a harness on a different SDK build than the plugin quietly stops being evidence.
+# Neither says anything before a device.
+step "Plugin-system conventions + host alignment + unit tests (JVM — no device)"
 ./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} \
   :plugin:checkPluginConventions \
-  checkComposeAlignment \
+  checkHostAlignment \
   :plugin:testAndroidHostTest
 
 # ---------------------------------------------------------------- 4. the bundle

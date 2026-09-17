@@ -30,6 +30,10 @@ plugins {
 
 val hostAndroidxCompose = libs.versions.androidxCompose.get()
 
+/** The DHIS2 SDK. `:plugin` never declares it — the bundle plugin injects it from the host. */
+val sdkGroup = "org.hisp.dhis"
+val sdkName = "android-core"
+
 /** The androidx Compose groups that move together on the host's `compose` version line. */
 val hostComposeGroups = setOf(
     "androidx.compose.animation",
@@ -50,17 +54,24 @@ subprojects {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// …and prove it held.
+// …and prove it held — for Compose, and for the DHIS2 SDK.
 //
 // A force that silently stops applying — a group renamed upstream, a `strictly` constraint winning,
 // someone deleting the block above — puts the build straight back where it started, with no symptom
 // until a device. So the resolved versions are read back and checked, which is the difference
 // between a rule that is enforced and one that is hoped for.
+//
+// The SDK half is a different shape. :plugin never declares android-core — the bundle plugin
+// injects it `strictly` at the host's version, so :plugin's resolution IS the host's answer. The
+// harness declares its own from the catalogue, and the two silently diverged by two weeks of
+// snapshot builds: the harness constructed a D2 from an older SDK than the plugin was compiled
+// against, which is precisely the class of problem the harness exists to catch. So rather than
+// trust the catalogue, this compares the harness against :plugin and fails on any difference.
 // ─────────────────────────────────────────────────────────────────────────────
 
-val checkComposeAlignment by tasks.registering {
+val checkHostAlignment by tasks.registering {
     group = "verification"
-    description = "Every androidx Compose artifact resolves to the version the host provides."
+    description = "Compose and the DHIS2 SDK resolve to what the host provides."
 
     // Resolved at execution time, not configuration time, so this task costs nothing until it runs.
     notCompatibleWithConfigurationCache("resolves configurations from every project at execution time")
@@ -107,5 +118,51 @@ val checkComposeAlignment by tasks.registering {
             "  $checked androidx Compose artifact(s) resolve to $hostAndroidxCompose, " +
                 "the version the host provides",
         )
+
+        // ── the DHIS2 SDK ───────────────────────────────────────────────────────────────────────
+        fun sdkVersionIn(project: Project?, configurationName: String): String? =
+            project?.configurations?.findByName(configurationName)
+                ?.takeIf { it.isCanBeResolved }
+                ?.let { configuration ->
+                    runCatching { configuration.incoming.resolutionResult.allComponents }
+                        .getOrNull()
+                        ?.mapNotNull { it.moduleVersion }
+                        ?.firstOrNull { it.group == sdkGroup && it.name == sdkName }
+                        ?.version
+                }
+
+        // :plugin's is authoritative — the bundle plugin injects it `strictly` from the host.
+        val hostSdk = listOf("androidCompileClasspath", "androidHostTestCompileClasspath")
+            .firstNotNullOfOrNull { sdkVersionIn(findProject(":plugin"), it) }
+
+        val harnessSdk = sdkVersionIn(findProject(":app"), "debugRuntimeClasspath")
+
+        when {
+            // Never silently pass: a check that cannot see its subject is a check that is not
+            // running, and saying so is the difference between a gate and decoration.
+            hostSdk == null -> error(
+                "Could not resolve $sdkGroup:$sdkName in :plugin, so the DHIS2 SDK could not be " +
+                    "checked. Run this from the repository root as part of ./verify.sh.",
+            )
+
+            harnessSdk == null -> error(
+                "Could not resolve $sdkGroup:$sdkName in the harness (:app), so the DHIS2 SDK " +
+                    "could not be checked.",
+            )
+
+            hostSdk != harnessSdk -> error(
+                buildString {
+                    appendLine("The harness and the plugin disagree about the DHIS2 SDK:")
+                    appendLine("    :plugin (injected by the bundle plugin, from the host)  $hostSdk")
+                    appendLine("    :app    (declared in gradle/libs.versions.toml)         $harnessSdk")
+                    appendLine()
+                    appendLine("  The harness would build its D2 from a different SDK than the plugin is")
+                    appendLine("  compiled against, which is the one thing the harness exists to de-risk.")
+                    appendLine("  Set dhis2AndroidCore in gradle/libs.versions.toml to $hostSdk.")
+                },
+            )
+
+            else -> logger.lifecycle("  DHIS2 SDK $hostSdk in both :plugin and the harness")
+        }
     }
 }
