@@ -66,6 +66,12 @@ kotlin {
                 // Host-provided, so compileOnly — same rule as compose.*. A ViewModel needs the
                 // lifecycle artifact; the runtime classes come from the Capture App.
                 compileOnly(libs.androidx.lifecycle.viewmodel)
+                // The DHIS2 design system, so a plugin looks like the app it renders inside.
+                // compileOnly for the same reason as compose.*: the Capture App carries it on its
+                // runtime classpath, and a second copy in the bundle is DEX bloat at best and a
+                // ClassCastException at worst.
+                compileOnly(libs.dhis2.mobile.designsystem)
+
                 compileOnly(libs.koin.core)
                 compileOnly(libs.koin.compose)
                 compileOnly(libs.koin.compose.viewmodel)

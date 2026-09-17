@@ -3,6 +3,7 @@ package org.dhis2.mobile.plugin.template.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import org.dhis2.mobile.plugin.template.model.PluginSummary
+import org.hisp.dhis.mobile.ui.designsystem.theme.DHIS2Theme
 
 /**
  * `@Preview`s of [PluginCard], against state you supply.
@@ -27,20 +28,22 @@ private val LOADED = PluginUiState(
 @Preview(showBackground = true, name = "Loaded")
 @Composable
 private fun LoadedPreview() {
-    PluginCard(state = LOADED, pluginVersion = PREVIEW_VERSION)
+    DHIS2Theme { PluginCard(state = LOADED, pluginVersion = PREVIEW_VERSION) }
 }
 
 @Preview(showBackground = true, name = "Loading")
 @Composable
 private fun LoadingPreview() {
-    PluginCard(state = PluginUiState(), pluginVersion = PREVIEW_VERSION)
+    DHIS2Theme { PluginCard(state = PluginUiState(), pluginVersion = PREVIEW_VERSION) }
 }
 
 @Preview(showBackground = true, name = "Read failed")
 @Composable
 private fun FailedPreview() {
-    PluginCard(
-        state = PluginUiState(summary = SummaryState.Failed("[UNEXPECTED] no database")),
-        pluginVersion = PREVIEW_VERSION,
-    )
+    DHIS2Theme {
+        PluginCard(
+            state = PluginUiState(summary = SummaryState.Failed("[UNEXPECTED] no database")),
+            pluginVersion = PREVIEW_VERSION,
+        )
+    }
 }

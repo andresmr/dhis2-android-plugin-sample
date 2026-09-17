@@ -169,6 +169,9 @@ dependencies {
     // A real dependency here, not compileOnly: :app is the harness, not a shipped plugin, and it is
     // the thing that constructs the D2 the plugin is handed.
     implementation(libs.dhis2.android.core)
+    // Real, not compileOnly: :app is the harness, and the harness is what plays the host's part —
+    // it has to actually provide what the Capture App provides.
+    implementation(libs.dhis2.mobile.designsystem)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     // The harness has to reproduce the host's private container, because the plugin resolves its
     // ViewModel with koinViewModel() and would otherwise find no Koin at all.

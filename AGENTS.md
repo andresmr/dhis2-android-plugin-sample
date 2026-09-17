@@ -278,9 +278,9 @@ cannot slip past it.
 
 ## Design system
 
-**Not adopted yet — this section describes where the UI should go, not where it is.** `PluginCard`
-uses raw Material 3 today, and `org.hisp.dhis.mobile:designsystem` is declared nowhere in this
-build. Adopting it is in the backlog; what follows is how to do it.
+**Adopted.** `org.hisp.dhis.mobile:designsystem` is declared `compileOnly` in the plugin modules and
+as a real dependency in the harness, the seed's `PluginCard` draws every colour, space, corner and
+text style from it, and the harness wraps the plugin in `DHIS2Theme` exactly as the host does.
 
 A plugin should look like the app it renders inside. The Capture App carries
 `org.hisp.dhis.mobile:designsystem` on its runtime classpath, so declare it **`compileOnly`** and the
@@ -294,7 +294,7 @@ Declared in `commonMain` — it is a Compose Multiplatform library, so it belong
 `compose.*` entries rather than in `androidMain`:
 
 ```kotlin
-compileOnly("org.hisp.dhis.mobile:designsystem:<the version the host ships>")
+compileOnly(libs.dhis2.mobile.designsystem)   // designSystem in the version catalogue
 ```
 
 It resolves from the repositories already in `settings.gradle.kts` (the snapshots repo is what
@@ -445,8 +445,11 @@ The entry point — the class `plugin.json` names — must:
   targeting a future slot could not say so. `plugin.json` has the field and
   `tools/check-identity.py` rejects any other value rather than let it lie — but that is a guard
   around a gap, not a fix for it.
-- **Adopt the DHIS2 design system.** `PluginCard` uses raw Material 3 and hardcoded hex colours;
-  `org.hisp.dhis.mobile:designsystem` is not declared. See *Design system* above for how.
+- **Reach for design-system *components*, not only its tokens.** The seed uses `SurfaceColor`,
+  `TextColor`, `Spacing` and `Radius` with a plain Material 3 `Card`. `BaseCard`, `ListCard`,
+  `Button`, `Badge` and `InfoBar` exist in `…designsystem.component` and would be closer to the
+  host still; `BaseCard` takes nine parameters and several defaults, so it is worth doing
+  deliberately rather than by reflex (build rule 3).
 - **Move the last two local rules upstream, or accept that they stay local.** `tools/check-rules.py`
   still checks that `PluginRepository` returns `Result` and that `PluginCard` bounds its height. Both
   name shapes this template chose, so upstream could only find them by growing an interface for

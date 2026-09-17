@@ -86,7 +86,12 @@ def check_sdk_is_in_one_file(failures, identity):
     `checkPluginConventions`, because it is a property of the plugin system rather than of one
     repository. What is left is a list only this repository can have an opinion about.
     """
-    sdk = re.compile(r"\borg\.hisp\.dhis\b")
+    # `org.hisp.dhis.android`, not `org.hisp.dhis`. The DHIS2 design system is
+    # `org.hisp.dhis.mobile.ui.designsystem` — also host-provided, also compileOnly, but it is UI and
+    # belongs in commonMain like any other Compose import. The looser pattern flagged a file whose
+    # only sin was importing DHIS2Theme, which would have taught every plugin author that using the
+    # design system breaks a rule.
+    sdk = re.compile(r"\borg\.hisp\.dhis\.android\b")
     allowed = allowed_by("sdkAllowed", identity)
     for path in kotlin_under(ANDROID_MAIN):
         if lines_matching(path, sdk) and path not in allowed:

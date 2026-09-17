@@ -7,6 +7,7 @@ import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.D2Configuration
 import org.hisp.dhis.android.core.D2Manager
 import org.hisp.dhis.android.core.arch.repositories.scope.RepositoryScope
+import org.hisp.dhis.android.core.maintenance.D2Error
 import org.hisp.dhis.android.core.program.ProgramType
 
 sealed interface HarnessState {
@@ -125,7 +126,29 @@ class HarnessSession(private val context: Context) {
             onStep(name)
             block()
         } catch (error: Throwable) {
-            failure = HarnessState.Failed(name, error.message ?: error::class.simpleName ?: "unknown error")
+            failure = HarnessState.Failed(name, error.describe())
             null
         }
+}
+
+/**
+ * A message worth showing a human.
+ *
+ * `D2Error` is a `data class … : Exception()` that passes nothing to the `Exception` constructor, so
+ * `Throwable.message` on one is **always null** — falling back to the class name renders the bare
+ * word "D2Error", which says nothing at all. That is architecture rule 6, and this file was breaking
+ * it: a failed login showed "D2Error" and left you guessing between a wrong password, a wrong URL
+ * and a server that was not running.
+ *
+ * The plugin's own repository already does this properly in `catchingD2`. The harness is the first
+ * thing a developer meets, and it was the one place still getting it wrong.
+ */
+private fun Throwable.describe(): String = when (this) {
+    is D2Error -> listOfNotNull(
+        errorCode()?.let { "[$it]" },
+        errorDescription(),
+        httpErrorCode()?.let { "(HTTP $it)" },
+    ).joinToString(" ").ifBlank { "D2Error with no description" }
+
+    else -> message ?: this::class.simpleName ?: "unknown error"
 }

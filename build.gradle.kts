@@ -164,5 +164,57 @@ val checkHostAlignment by tasks.registering {
 
             else -> logger.lifecycle("  DHIS2 SDK $hostSdk in both :plugin and the harness")
         }
+
+        // ── Material, on both sides of the design system ─────────────────────────────────────────
+        //
+        // A plugin does not get to pick a Material version. The DHIS2 design system is built against
+        // one, the host ships that pairing, and a plugin compiled against a different material3 than
+        // the one rendering its components is the NoSuchMethodError trap one layer up — with the
+        // twist that the symptom is a *component* misrendering rather than the plugin's own code
+        // failing, which is far harder to attribute.
+        //
+        // Note what this does NOT do: read the requirement out of the design system's metadata. It
+        // declares Material as `implementation`, so the edge is absent from every compile classpath
+        // and only appears at runtime. What is checkable instead is the pairing that actually
+        // matters — what :plugin compiles against, against what the harness (which pulls the design
+        // system for real, and resolves its requirement along with it) runs.
+        val material3Group = "org.jetbrains.compose.material3"
+
+        fun material3In(project: Project?, configurationName: String): String? =
+            project?.configurations?.findByName(configurationName)
+                ?.takeIf { it.isCanBeResolved }
+                ?.let { configuration ->
+                    runCatching { configuration.incoming.resolutionResult.allComponents }
+                        .getOrNull()
+                        ?.mapNotNull { it.moduleVersion }
+                        ?.firstOrNull { it.group == material3Group && it.name.startsWith("material3") }
+                        ?.version
+                }
+
+        val compiledAgainst = material3In(findProject(":plugin"), "androidCompileClasspath")
+        val renderedWith = material3In(findProject(":app"), "debugRuntimeClasspath")
+
+        when {
+            compiledAgainst == null || renderedWith == null -> error(
+                "Could not resolve $material3Group:material3 on both sides, so Material is " +
+                    "unchecked. Is the design system still declared in :plugin and the harness?",
+            )
+
+            compiledAgainst != renderedWith -> error(
+                buildString {
+                    appendLine("The plugin and the design system disagree about Material:")
+                    appendLine("    :plugin compiles against              $compiledAgainst")
+                    appendLine("    the harness renders the design system with  $renderedWith")
+                    appendLine()
+                    appendLine("  The design system's components would be drawn by a different Material than")
+                    appendLine("  the plugin was compiled against. Align composeMultiplatform in")
+                    appendLine("  gradle/libs.versions.toml with the design system's own, or move designSystem.")
+                },
+            )
+
+            else -> logger.lifecycle(
+                "  Material $compiledAgainst on both sides of the design system",
+            )
+        }
     }
 }
