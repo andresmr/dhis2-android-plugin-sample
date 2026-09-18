@@ -13,10 +13,9 @@ import org.hisp.dhis.mobile.ui.designsystem.theme.DHIS2Theme
  * `Dhis2PluginContext`. For the plugin against real data, run the harness
  * (`./gradlew :app:installDebug`).
  *
- * These live beside the card rather than in `:app` so the harness names no plugin type at all,
- * which is what lets `harness.module` point it at any plugin module without an edit. In
- * `androidMain` because `@Preview` is an Android annotation; [PluginCard] itself stays in
- * `commonMain`.
+ * These live beside the card rather than in `:app`, so the harness names no plugin type at all and
+ * loads the entry point reflectively exactly as the host does. In `androidMain` because `@Preview`
+ * is an Android annotation; [PluginCard] itself stays in `commonMain`.
  */
 
 private const val PREVIEW_VERSION = "preview"

@@ -98,7 +98,16 @@ def validate(data):
             "reaches Compose Resources as a backtick-escaped package." % data["slug"]
         )
 
-    points = data.get("injectionPoints") or SUPPORTED_INJECTION_POINTS
+    # Required, and strictly. An absent list used to mean "all of them", which reads as harmless
+    # and is not: the build writes it into plugin-config.json, the harness picks a slot from it, and
+    # a plugin that never said where it renders would render in places its author never considered.
+    points = data.get("injectionPoints") or []
+    if not points:
+        problems.append(
+            "injectionPoints is missing. Name the slot or slots this plugin renders in — %s. It "
+            "reaches the generated plugin-config.json, and the harness renders the slot it names."
+            % ", ".join(SUPPORTED_INJECTION_POINTS)
+        )
     unsupported = [p for p in points if p not in SUPPORTED_INJECTION_POINTS]
     if unsupported:
         problems.append(

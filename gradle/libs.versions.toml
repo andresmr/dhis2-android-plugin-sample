@@ -51,6 +51,11 @@ desugarJdkLibs = "2.1.5"
 koin = "4.1.1"
 # Test-only, so free to differ from the host.
 coroutinesTest = "1.10.2"
+# What plugin-sdk's own Gradle metadata requires. :app needs it on the *compile* classpath to
+# name JsonObject, and plugin-sdk publishes it only in androidRuntimeElements — so nothing
+# brings it there for us. Matching the metadata version means :app cannot meet a JsonObject
+# newer than the one plugin-sdk was compiled against.
+kotlinxSerializationJson = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -73,6 +78,8 @@ desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref 
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
 # Test-only.
 test-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }

@@ -70,8 +70,13 @@ version just leaves a stale jar in `~/.m2`.
 
 Asks for the plugin's name, Kotlin package, plugin id and entry-point class, then rewrites the
 repository as yours: the sources move to your package, `plugin.json` records the identity that the
-build and every gate read, `examples/` is removed, and `./verify.sh` runs. Nothing is committed —
-review `git diff --staged` first.
+build and every gate read, and `./verify.sh` runs. Nothing is committed — review `git diff --staged`
+first.
+
+**Which host slot your plugin renders in is `plugin.json`'s `injectionPoints`**, and `./init.sh`
+carries whatever it says through the rename rather than overwriting it — so set it before you run,
+or pass `--injection-point` and `--data-set-uid`. The template ships targeting the home screen. See
+*Host slots* in [`AGENTS.md`](AGENTS.md).
 
 Pass the values as flags to skip the prompts; `./init.sh --help` lists them, and `--dry-run` shows
 exactly what would change. Already done it? `./init.sh --check` says so.
@@ -91,18 +96,19 @@ sdk.dir=/Users/you/Library/Android/sdk
 dhis2.serverUrl=http://10.0.2.2:8080
 dhis2.username=admin
 dhis2.password=district
-dhis2.programUid=
 
-# Optional. Which plugin the harness builds and renders; blank means your own :plugin.
-# harness.module=:examples:program-summary
+# Optional. Which slot to render, when plugin.json declares more than one. Blank picks the most
+# specific slot the plugin could actually be rendered at.
+# harness.slot=HOME_ABOVE_PROGRAM_LIST
 ```
 
 **Use a development server.** A plugin only reads, but the harness signs in as a real user and syncs
 a real database onto the device.
 
-`dhis2.programUid` chooses only which programme the **harness** downloads tracker data for. Leave it
-blank and it picks the first tracker programme by name. A plugin is never told which programme to
-read — the dataStore config has no field for one.
+Which slot the harness renders comes from `plugin.json`'s `injectionPoints` — the same field that
+reaches the dataStore config — so the harness and a device cannot disagree about it. `harness.slot`
+only overrides *which* of several declared slots you are working on, and naming one `plugin.json`
+does not declare is refused. See *Host slots* in [`AGENTS.md`](AGENTS.md).
 
 ### 4. Build and verify
 
@@ -118,8 +124,7 @@ class-level check that the bundle carries nothing the host already owns is the G
 prints the bundle path, its checksum, and a ready-to-post `plugin-config.json`.
 
 `./verify.sh --cold` repeats it from an empty Gradle home, which catches stale local state. It keeps
-Maven Local, because that is where `plugin-sdk` lives. `./verify.sh --examples` also verifies
-everything under `examples/`, if you kept it.
+Maven Local, because that is where `plugin-sdk` lives.
 
 Output lands in `plugin/build/outputs/plugin-bundle/`.
 
@@ -130,8 +135,8 @@ Output lands in `plugin/build/outputs/plugin-bundle/`.
 ```
 
 `app/` is a development harness: it instantiates `D2`, signs in with the credentials from step 3,
-downloads metadata and then tracker data, and renders your plugin's real entry point inside a
-reproduction of the host's Koin container. It finds that entry point the way the host does —
+downloads metadata, resolves the slot your `plugin.json` declares, and renders your plugin's real
+entry point inside a reproduction of the host's Koin container. It finds that entry point the way the host does —
 `Class.forName` on the name in `plugin.json` — so a wrong class name or a missing no-argument
 constructor fails here, on your laptop, rather than on a device. The first run takes several minutes; every step is named
 on screen, so a slow run is distinguishable from a stuck one. Afterwards the database is on the
@@ -173,8 +178,10 @@ In your **Capture App** checkout:
 ./gradlew :app:installDhis2Debug
 ```
 
-Log in against the same server. Plugins load when the home screen opens, and the card renders above
-the programme list.
+Log in against the same server. Where the plugin appears is the slot its config names: at
+`HOME_ABOVE_PROGRAM_LIST` it loads with the home screen and renders above the programme list; at
+`DATA_SET_INSTANCE_CONTENT` it replaces the body of the data set instance screen, for the data sets
+`slotConfig` lists, and nowhere else.
 
 ## Troubleshooting
 
@@ -211,7 +218,5 @@ this before you post the config; `./verify.sh` runs it.
 - [`specs/README.md`](specs/README.md) — the spec format, and why logic and device scenarios are
   kept apart. Start from [`specs/TEMPLATE.md`](specs/TEMPLATE.md), and build what you write with
   [`docs/workflows/plugin-from-spec.md`](docs/workflows/plugin-from-spec.md).
-- [`examples/program-summary/`](examples/program-summary) — a complete worked plugin with its spec
-  beside it: a tracker programme's enrolment and event counts, and a few enrolled people labelled the
-  way the Capture App labels them. `./init.sh` deletes `examples/`; pass `--keep-examples` to keep
-  it, and set `harness.module` to run it.
+- **Host slots** in [`AGENTS.md`](AGENTS.md) — the two places a plugin can render, how they differ,
+  and how `plugin.json` decides which one you land on.

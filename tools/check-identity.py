@@ -40,10 +40,9 @@ PLUGIN_SOURCE_SETS = (
     Path("plugin/src/androidHostTest/kotlin"),
 )
 
-# Where a leftover template token is expected rather than wrong: the worked example is *about* the
-# sample and rewriting it would make it describe a plugin that does not exist, and the licence is a
-# legal statement no tool should edit.
-EXEMPT_PREFIXES = ("examples/", "specs/examples/", "LICENSE", "tools/identity.py")
+# Where a leftover template token is expected rather than wrong: the licence is a legal statement no
+# tool should edit, and tools/identity.py is where the template's own names are *defined*.
+EXEMPT_PREFIXES = ("LICENSE", "tools/identity.py")
 
 SCANNED_SUFFIXES = {
     ".kt", ".kts", ".xml", ".md", ".py", ".pro", ".properties", ".json", ".sh", ".yml", ".yaml",
@@ -142,7 +141,7 @@ def check_no_template_residue(problems, identity):
 
 def check_injection_points(problems, identity):
     """A slot the host does not define, or a replacement slot nobody configured, renders nothing."""
-    points = identity.get("injectionPoints") or SUPPORTED_INJECTION_POINTS
+    points = identity.get("injectionPoints") or []
     unsupported = [p for p in points if p not in SUPPORTED_INJECTION_POINTS]
     if unsupported:
         problems.append(

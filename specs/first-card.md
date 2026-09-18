@@ -1,11 +1,11 @@
 # First card
 
 <!--
-The seed's spec: two logic scenarios and two device scenarios. Enough that ./verify.sh has
-something real to check on a fresh fork, small enough to delete on your first day.
+The seed's spec for HOME_ABOVE_PROGRAM_LIST: two logic scenarios and two device scenarios. Enough
+that ./verify.sh has something real to check on a fresh fork, small enough to delete on your first
+day.
 
-Replace it rather than extending it. A worked example of a full spec, with its implementation
-beside it, is examples/program-summary/specs/program-summary.md.
+Replace it rather than extending it. Its sibling, data-set-body.md, covers the other host slot.
 -->
 
 ## Intent

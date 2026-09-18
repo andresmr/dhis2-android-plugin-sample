@@ -28,7 +28,7 @@ is invisible from this side: it surfaces as a dependency-resolution error that n
 `./init.sh` checks for both, at the version `gradle/libs.versions.toml` asks for, and says exactly
 this if they are missing. You do not have to verify it by hand — but you do have to do it first.
 
-## Phase 01 — Agree the four names
+## Phase 01 — Agree the four names and the slot
 
 Ask, and do not guess. These are hard to change casually later — not impossible (`./init.sh --force`
 renames a fork), but they end up in a server's dataStore configuration, so they are worth a minute.
@@ -42,6 +42,23 @@ renames a fork), but they end up in a server's dataStore configuration, so they 
 
 Two more with sensible defaults, worth mentioning rather than asking about: the **version** (default
 `0.1.0`) and the **slug** used as Gradle's `rootProject.name` (default: kebab-case of the name).
+
+**Then ask where it renders.** This is a real question with two answers, and it decides which of the
+template's two defaults the fork lands on:
+
+| Slot | What it is | Needs |
+|---|---|---|
+| `HOME_ABOVE_PROGRAM_LIST` | A card on the home screen, above the programme list. Additive — every plugin configured for it renders. | Nothing. This is the default. |
+| `DATA_SET_INSTANCE_CONTENT` | The body of the data set instance screen, in place of the host's table. The host keeps its top bar, save button and bottom bar. | The UID of at least one data set it applies to. |
+
+A plugin may declare both. It lives in `plugin.json` as `injectionPoints` and `slotConfig`, which is
+also what reaches the dataStore config an administrator posts — and unlike the four names above,
+these are **yours to edit by hand**, before or after init. Nothing in the source tree mirrors them,
+so nothing can disagree with them. `./init.sh` carries whatever they say through the rename.
+
+Both defaults stay in the tree whichever you pick: `plugin/src/androidMain/kotlin/…/slots/` has one
+file per slot, and the one you do not use is a file you can delete once you are sure. See *Host
+slots* in `AGENTS.md`.
 
 If you are an agent: confirm these back before running anything, then pass every one as a flag. Do
 not rely on prompts — `./init.sh` will not prompt without a terminal, by design, because a hung
@@ -58,13 +75,29 @@ prompt is indistinguishable from a hung build.
           --yes
 ```
 
+For the data set slot, add `--injection-point` and `--data-set-uid` (both repeatable):
+
+```bash
+./init.sh --name "Monthly Stock" \
+          --package org.myorg.stock \
+          --plugin-id org.myorg.monthly-stock \
+          --entry-point StockPlugin \
+          --injection-point DATA_SET_INSTANCE_CONTENT \
+          --data-set-uid BfMAe6Itzgt \
+          --yes
+```
+
+Omit them and whatever `plugin.json` already declares is kept — so editing the file first works just
+as well, and is the better route by hand.
+
 Without flags it prompts for each value, pre-filled from the ones before it. `--dry-run` prints
 every move, rename and rewrite and changes nothing; worth doing first if you want to see the shape
 of it.
 
 What it does: writes `plugin.json`, moves the Kotlin directories, renames the entry-point file,
-rewrites the remaining references, deletes `examples/` and every build directory, then runs
-`./verify.sh` and stages everything **without committing**.
+rewrites the remaining references, deletes every build directory, then runs `./verify.sh` and stages
+everything **without committing**. It reports the slots it recorded, and says plainly when a
+replacement slot has no UIDs yet — that is a plugin that will render nothing.
 
 It stops short of three decisions that are not a tool's to make, and says so: your `git remote`
 still points at the template, `LICENSE` still names the University of Oslo, and an older harness may
@@ -79,6 +112,9 @@ sdk.dir=/Users/you/Library/Android/sdk
 dhis2.serverUrl=http://10.0.2.2:8080     # from an emulator, 10.0.2.2 is your host machine
 dhis2.username=admin
 dhis2.password=district
+
+# Optional: only when plugin.json declares more than one slot and you want the other one.
+# harness.slot=HOME_ABOVE_PROGRAM_LIST
 ```
 
 **Use a development server.** The plugin only reads, but the harness signs in as a real user and
@@ -90,12 +126,21 @@ Then:
 ./gradlew :app:installDebug
 ```
 
-The first run takes several minutes — it instantiates `D2`, logs in, downloads metadata and then
-tracker data. Every step is named on screen, so a slow run is distinguishable from a stuck one.
-Afterwards the database is on the device and startup is immediate.
+The first run takes several minutes — it instantiates `D2`, logs in and downloads metadata. Every
+step is named on screen, so a slow run is distinguishable from a stuck one. Afterwards the database
+is on the device and startup is immediate.
+
+It then resolves the slot `plugin.json` declares. At the home slot there is nothing to resolve. At
+`DATA_SET_INSTANCE_CONTENT` it finds the data set, period, organisation unit and attribute option
+combo for the UID you configured, and names all four on screen — so "the harness picked the wrong
+instance" and "the plugin is broken" cannot be confused. A UID no server has, or a data set assigned
+to no unit you can capture for, is a named failure rather than an empty screen.
 
 This is also the credential check: wrong URL, wrong password or an unreachable server each show up
 as a named failure on screen rather than as a blank card.
+
+Note the harness downloads **metadata only**. A plugin that reads rows of data will see none until
+you add the download it needs.
 
 ## Phase 04 — Confirm, then commit
 
@@ -114,9 +159,10 @@ git commit -m "chore: initialise from the DHIS2 plugin template as <name>"
 
 Report:
 
-1. **The identity**: name, plugin id, package, entry-point FQCN, version.
+1. **The identity**: name, plugin id, package, entry-point FQCN, version, and the slot or slots it
+   declares — with their `slotConfig`, or the fact that a replacement slot has none yet.
 2. **That `./verify.sh` passed**, and where the bundle and its `plugin-config.json` are.
-3. **What is unproven.** `specs/first-card.md` carries two device scenarios that no JVM test can
+3. **What is unproven.** The seed's specs carry device scenarios that no JVM test can
    cover — a `D2` needs an Android `Context`, a database and an HTTP stack. Point at
    `./gradlew :app:installDebug`, and say plainly that the Capture App itself is still needed for
    the height budget, the class-loader reload, resource resolution and Compose version skew.
@@ -138,10 +184,11 @@ separately: `tools/check-identity.py` exists because the build stays green when 
 the failure surfaces on a device as `ClassNotFoundException`.
 
 **The seed.** `plugin/src` holds a small working plugin — model, repository interface, UiState,
-ViewModel, card, `D2PluginRepository` — reading the programme count. It exists so `./verify.sh` has
+ViewModel, card, `D2PluginRepository` — reading the programme count, plus one renderer per slot
+under `slots/`. It exists so `./verify.sh` has
 something real to check and so the three layers are visible rather than described. Replace it. It is
 meant to be deleted.
 
-**The examples.** `./init.sh` removes `examples/`. If you want to keep the worked example around
-while you learn the shape of things, pass `--keep-examples`, and set `harness.module` in
-`local.properties` to run it in the harness. Delete it before you ship.
+**Changing the slot later.** Edit `injectionPoints` and `slotConfig` in `plugin.json` and rebuild.
+Unlike the four names, these have no counterpart in the source tree, so no gate can disagree with
+them and `--force` is not involved. The other slot's default is already in `slots/`, waiting.

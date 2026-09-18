@@ -5,7 +5,7 @@
   the pipeline reads them by name, so a renamed section is one it does not read. An empty section is
   fine — it reads as "considered, nothing to say" rather than "forgotten".
 
-  Delete these comments as you go. A complete example sits in `examples/program-summary/specs/`.
+  Delete these comments as you go. `first-card.md` and `data-set-body.md` are worked examples.
 -->
 
 ## Intent
@@ -73,10 +73,15 @@
 ## UI budget
 
 <!--
-  The host renders the plugin in a NON-SCROLLING column above its own program list. Height taken
-  here is height the app loses, and anything past the viewport is unreachable rather than
-  scrollable.
+  Depends on the slot — the two are opposites. See "Host slots" in AGENTS.md.
 
-  State the resting height, what is visible without interaction, and what hides behind a toggle. If
-  a section can grow with the data, say what bounds it.
+  ADDITIVE (HOME_ABOVE_PROGRAM_LIST): the host renders the plugin in a NON-SCROLLING column above
+  its own program list. Height taken here is height the app loses, and anything past the viewport is
+  unreachable rather than scrollable. State the resting height, what is visible without
+  interaction, and what hides behind a toggle. If a section can grow with the data, say what bounds
+  it.
+
+  REPLACEMENT (DATA_SET_INSTANCE_CONTENT): the plugin owns the region it was given, so filling it is
+  correct and scrolling is its own job. Nothing to budget — but say that LocalSlotContentPadding is
+  applied, or the last row sits under the host's save button.
 -->

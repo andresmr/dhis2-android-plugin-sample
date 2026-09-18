@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.dhis2.mobile.plugin.sdk.DataSetInstanceSlotArguments
 import org.dhis2.mobile.plugin.sdk.Dhis2Plugin
 import org.dhis2.mobile.plugin.sdk.Dhis2PluginContext
 import org.dhis2.mobile.plugin.sdk.LocalSlotArguments
@@ -31,19 +30,24 @@ import org.koin.dsl.module
  * using them renders against Material's defaults here and something else entirely on a device,
  * which is worse than not testing the theme at all.
  *
- * Which slot the plugin is rendered at is [HARNESS_SLOT]. The harness does not filter by slot the
- * way the host's registry does — it renders whichever entry point `harness.module` names — so this
- * is a switch you flip, not something a configuration decides.
+ * Which slot the plugin is rendered at comes from `plugin.json`, resolved by [HarnessSlot.kt] — not
+ * from a constant in this file. [slotArguments] is what the host would have told the plugin about
+ * the occurrence, and null is the right value at a slot that has nothing to say about what is on
+ * screen.
  */
 @Composable
-fun PluginHost(plugin: Dhis2Plugin, context: Dhis2PluginContext) {
+fun PluginHost(
+    plugin: Dhis2Plugin,
+    context: Dhis2PluginContext,
+    slotArguments: SlotArguments?,
+) {
     DHIS2Theme {
         KoinIsolatedContext(context = containerFor(plugin, context)) {
             CompositionLocalProvider(
-                LocalSlotArguments provides HARNESS_SLOT,
-                LocalSlotContentPadding provides slotContentPadding(),
+                LocalSlotArguments provides slotArguments,
+                LocalSlotContentPadding provides slotContentPadding(slotArguments),
             ) {
-                when (HARNESS_SLOT) {
+                when (slotArguments) {
                     // An additive slot: the host gives it as much height as it takes, above its own
                     // scrolling content, and MainActivity's scrolling Column is that arrangement.
                     null -> plugin.content(context)
@@ -73,27 +77,11 @@ fun PluginHost(plugin: Dhis2Plugin, context: Dhis2PluginContext) {
  * Worth providing rather than leaving at the default: a plugin that forgets to apply it looks
  * correct until the last row of a real form turns out to be unreachable on a device.
  */
-private fun slotContentPadding(): PaddingValues = when (HARNESS_SLOT) {
-    null -> PaddingValues()
-    else -> PaddingValues(bottom = SAVE_BUTTON_HEIGHT)
-}
-
-/**
- * Which slot to render the plugin at, and with what the host would tell it about the occurrence.
- *
- * `null` renders it at `HOME_ABOVE_PROGRAM_LIST`, which needs no arguments — the slot is the whole
- * home screen. A [SlotArguments] renders it at that slot instead.
- *
- * The UIDs are yours to change. They can be anything while a plugin only displays them; once it
- * queries the instance they have to exist on the server the harness logged into, because the `D2`
- * here is a real session and a wrong UID reads as empty rather than failing.
- */
-private val HARNESS_SLOT: SlotArguments? = DataSetInstanceSlotArguments(
-    dataSetUid = "lyLU2wR22tC",
-    periodId = "202401",
-    organisationUnitUid = "DiszpKrYNg8",
-    attributeOptionComboUid = "HllvX50cXC0",
-)
+private fun slotContentPadding(slotArguments: SlotArguments?): PaddingValues =
+    when (slotArguments) {
+        null -> PaddingValues()
+        else -> PaddingValues(bottom = SAVE_BUTTON_HEIGHT)
+    }
 
 /** Stands in for the region the host's data set screen gives its body. */
 private val REPLACEMENT_SLOT_HEIGHT = 500.dp

@@ -152,7 +152,9 @@ model → repository interface → UiState → ViewModel → Composable → repo
 - Repositories return `Result`, never throw. An exception escaping into the host composition takes
   the whole host screen with it.
 - Composables take plain data and callbacks, never a `Dhis2PluginContext`.
-- Respect the spec's UI budget. The host slot does not scroll.
+- Respect the spec's UI budget. At an additive slot the host's column does not scroll, so cap
+  your height; at a replacement slot you own the region and must apply
+  `LocalSlotContentPadding`. See *Host slots* in `AGENTS.md`.
 
 Prefer DHIS2 design-system components over raw Material 3 so the plugin looks like the app it
 renders inside — but note the dependency is **not declared in this build yet**, so adopting it means

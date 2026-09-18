@@ -125,7 +125,12 @@ def check_repository_returns_result(failures, identity):
 
 
 def check_card_bounds_its_height(failures, identity):
-    """Architecture rule 3: the host slot does not scroll, so the card bounds itself."""
+    """Architecture rule 3: an *additive* slot's column does not scroll, so the card bounds itself.
+
+    Only what `conventions.boundedComposables` names. A replacement slot owns the region it was
+    given, so a composable rendered there fills it and scrolls inside it — which is why
+    `DataSetBodyPlaceholder` is deliberately absent from that list rather than accidentally missing.
+    """
     patterns = identity.get("conventions", {}).get("boundedComposables", [])
     for pattern in patterns:
         paths = paths_matching(pattern, identity)
