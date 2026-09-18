@@ -365,9 +365,24 @@ they behave in opposite ways — most of what is true of one is false of the oth
 | Needs configuration | No | Yes — `slotConfig.DATA_SET_INSTANCE_CONTENT.dataSetUids` |
 
 **Where a slot is declared.** `plugin.json`'s `injectionPoints`, and for a replacement,
-`slotConfig`. Both reach the generated `plugin-config.json`, which an administrator posts to the
-server dataStore — and the dataStore is what the host actually reads. The plugin's *Kotlin* declares
-none of it (see the entry-point contract), and neither file may be a second copy of the other.
+`slotConfig`:
+
+```json
+"injectionPoints": ["DATA_SET_INSTANCE_CONTENT"],
+"slotConfig": {
+  "DATA_SET_INSTANCE_CONTENT": {
+    "dataSetUids": ["BfMAe6Itzgt"]
+  }
+}
+```
+
+That is the whole change — no Kotlin, nothing in `local.properties`. Rebuild and the harness renders
+that slot, resolving the period, organisation unit and attribute option combo itself. Declare both
+slots and it picks the replacement.
+
+Both fields reach the generated `plugin-config.json`, which an administrator posts to the server
+dataStore — and the dataStore is what the host actually reads. The plugin's *Kotlin* declares none
+of it (see the entry-point contract), and neither file may be a second copy of the other.
 
 **An empty `dataSetUids` is a kill switch, not a bug.** A replacement renders nowhere until it says
 which objects it applies to, so emptying the list switches the plugin off without deleting its

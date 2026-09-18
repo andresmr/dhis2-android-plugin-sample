@@ -38,8 +38,8 @@ This README is the install guide: what to install, and how to get a bundle onto 
 - **A JDK** — any recent one, only to launch the Gradle wrapper. Gradle provisions its own JDK 21
   toolchain (`gradle/gradle-daemon-jvm.properties`), so you do not need 21 installed.
 - **Gradle** — none to install; use the bundled `./gradlew` (9.5.1).
-- **A DHIS2 server.** The plugin only reads, but the harness signs in and downloads metadata and
-  tracker data, so use a development instance rather than production.
+- **A DHIS2 server.** The harness signs in as a real user and syncs a real database onto the
+  device, so use a development instance rather than production.
 - **An emulator or a device.** From an emulator, `10.0.2.2` is your host machine.
 - **A Capture App checkout** on the branch carrying the plugin system — `poc/plugin-system` at the
   time of writing. You need it twice: for step 1, and to install the host in step 7.
@@ -67,6 +67,11 @@ version just leaves a stale jar in `~/.m2`.
 ```bash
 ./init.sh
 ```
+
+**You do not need this to run anything.** The harness works on the pristine template, so to watch
+the seed render against your own server first, skip to step 3 and come back. `./init.sh` settles
+*identity* — your package, plugin id and entry-point class — which is worth a minute because those
+end up in a server's dataStore configuration.
 
 Asks for the plugin's name, Kotlin package, plugin id and entry-point class, then rewrites the
 repository as yours: the sources move to your package, `plugin.json` records the identity that the

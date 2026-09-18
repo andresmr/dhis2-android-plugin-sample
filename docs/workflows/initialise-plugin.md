@@ -54,7 +54,8 @@ template's two defaults the fork lands on:
 A plugin may declare both. It lives in `plugin.json` as `injectionPoints` and `slotConfig`, which is
 also what reaches the dataStore config an administrator posts — and unlike the four names above,
 these are **yours to edit by hand**, before or after init. Nothing in the source tree mirrors them,
-so nothing can disagree with them. `./init.sh` carries whatever they say through the rename.
+so nothing can disagree with them. `./init.sh` carries whatever they say through the rename. *Host
+slots* in `AGENTS.md` has the block to copy.
 
 Both defaults stay in the tree whichever you pick: `plugin/src/androidMain/kotlin/…/slots/` has one
 file per slot, and the one you do not use is a file you can delete once you are sure. See *Host
