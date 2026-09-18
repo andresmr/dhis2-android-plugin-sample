@@ -1,7 +1,6 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
     alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.android.library) apply false
     alias(libs.plugins.android.kotlin.multiplatform.library) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
@@ -61,12 +60,15 @@ subprojects {
 // until a device. So the resolved versions are read back and checked, which is the difference
 // between a rule that is enforced and one that is hoped for.
 //
-// The SDK half is a different shape. :plugin never declares android-core — the bundle plugin
-// injects it `strictly` at the host's version, so :plugin's resolution IS the host's answer. The
-// harness declares its own from the catalogue, and the two silently diverged by two weeks of
-// snapshot builds: the harness constructed a D2 from an older SDK than the plugin was compiled
-// against, which is precisely the class of problem the harness exists to catch. So rather than
-// trust the catalogue, this compares the harness against :plugin and fails on any difference.
+// The SDK half is a different shape. :plugin never declares android-core — the bundle plugin injects
+// it at the host's version, so :plugin's resolution is the host's answer as long as nothing else
+// asks for a different one. (It injects a plain version, not `strictly`: declare android-core here
+// at a higher version and ordinary conflict resolution would win, and this check would then blame
+// the harness. Nothing declares it, so the two agree. Worth knowing before anyone adds a
+// declaration.) The harness declares its own from the catalogue, and the two silently diverged by
+// two weeks of snapshot builds: the harness constructed a D2 from an older SDK than the plugin was
+// compiled against, which is precisely the class of problem the harness exists to catch. So rather
+// than trust the catalogue, this compares the harness against :plugin and fails on any difference.
 // ─────────────────────────────────────────────────────────────────────────────
 
 val checkHostAlignment by tasks.registering {
@@ -131,7 +133,8 @@ val checkHostAlignment by tasks.registering {
                         ?.version
                 }
 
-        // :plugin's is authoritative — the bundle plugin injects it `strictly` from the host.
+        // :plugin's is authoritative — the bundle plugin injects it from the host, and nothing in
+        // :plugin declares android-core to compete with it.
         val hostSdk = listOf("androidCompileClasspath", "androidHostTestCompileClasspath")
             .firstNotNullOfOrNull { sdkVersionIn(findProject(":plugin"), it) }
 

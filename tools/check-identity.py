@@ -119,7 +119,7 @@ def check_packages_match_paths(problems, identity):
 
 
 def check_no_template_residue(problems, identity):
-    """Nothing outside the examples still carries the template's own names."""
+    """Nothing outside the exempt paths still carries the template's own names."""
     if is_pristine(identity):
         return
     # Deliberately not the bare entry-point class name: it is a short PascalCase word a fork might

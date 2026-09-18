@@ -73,15 +73,12 @@
 ## UI budget
 
 <!--
-  Depends on the slot — the two are opposites. See "Host slots" in AGENTS.md.
+  What this plugin intends to occupy. How much room it actually gets is the host's business — see
+  "Host slots" in AGENTS.md.
 
-  ADDITIVE (HOME_ABOVE_PROGRAM_LIST): the host renders the plugin in a NON-SCROLLING column above
-  its own program list. Height taken here is height the app loses, and anything past the viewport is
-  unreachable rather than scrollable. State the resting height, what is visible without
-  interaction, and what hides behind a toggle. If a section can grow with the data, say what bounds
-  it.
+  State the resting height, what is visible without interaction, what hides behind a toggle, and
+  what bounds a section that can grow with the data.
 
-  REPLACEMENT (DATA_SET_INSTANCE_CONTENT): the plugin owns the region it was given, so filling it is
-  correct and scrolling is its own job. Nothing to budget — but say that LocalSlotContentPadding is
-  applied, or the last row sits under the host's save button.
+  At a replacement slot (DATA_SET_INSTANCE_CONTENT), also say that LocalSlotContentPadding is
+  applied — without it the last row sits under the host's floating save button.
 -->

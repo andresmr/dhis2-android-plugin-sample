@@ -111,9 +111,10 @@ manufacturing an edit.
 
 ## Phase 02 — Red
 
-Write the tests for the logic scenarios in `plugin/src/commonTest/`, following the existing
-`PluginViewModelTest` — a fake `PluginRepository`, `runTest`, `advanceUntilIdle()` then assert on
-`state.value`.
+Write the tests for the logic scenarios, following the existing `PluginViewModelTest` — a fake
+`PluginRepository`, `runTest`, `advanceUntilIdle()` then assert on `state.value`. Most belong in
+`plugin/src/commonTest/`; a scenario about `androidMain`'s own mapping goes in
+`plugin/src/androidHostTest/`, and one about the harness in `app/src/test/`.
 
 **Claim each scenario.** Every test carries a comment naming what it asserts:
 
@@ -152,14 +153,14 @@ model → repository interface → UiState → ViewModel → Composable → repo
 - Repositories return `Result`, never throw. An exception escaping into the host composition takes
   the whole host screen with it.
 - Composables take plain data and callbacks, never a `Dhis2PluginContext`.
-- Respect the spec's UI budget. At an additive slot the host's column does not scroll, so cap
-  your height; at a replacement slot you own the region and must apply
-  `LocalSlotContentPadding`. See *Host slots* in `AGENTS.md`.
+- Respect the spec's UI budget, and at a replacement slot apply `LocalSlotContentPadding` — without
+  it the last row sits under the host's save button. See *Host slots* in `AGENTS.md`.
 
-Prefer DHIS2 design-system components over raw Material 3 so the plugin looks like the app it
-renders inside — but note the dependency is **not declared in this build yet**, so adopting it means
-declaring it first. See the *Design system* section of `AGENTS.md` for the reference URLs and the
-`compileOnly` rule, and its entry in the backlog.
+**Prefer DHIS2 design-system components over raw Material 3**, so the plugin looks like the app it
+renders inside. The dependency is already declared — `compileOnly`, because the host provides it at
+runtime. `BaseCard`, `ListCard`, `Button`, `Badge` and `InfoBar` live in `…designsystem.component`,
+and the tokens (`SurfaceColor`, `TextColor`, `Spacing`, `Radius`) in `…designsystem.theme`. See the
+*Design system* section of `AGENTS.md`.
 
 Run the tests until green. If a test needs changing to pass, say why in the report — a test edited to
 match the implementation is worth a sentence, because that is how a spec quietly stops being the

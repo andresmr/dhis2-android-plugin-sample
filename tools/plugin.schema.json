@@ -86,7 +86,7 @@
       "additionalProperties": false,
       "properties": {
         "sdkAllowed": {
-          "description": "The only files permitted to mention org.hisp.dhis. Adding one is a decision worth a commit message.",
+          "description": "The only files permitted to mention org.hisp.dhis.android \u2014 the repository implementations. Keeping D2 out of UI and domain code is what keeps them unit-testable and previewable. Adding a path here is a decision worth a commit message.",
           "type": "array",
           "items": {
             "type": "string"
@@ -94,13 +94,6 @@
         },
         "repositoryInterfaces": {
           "description": "Interfaces whose every function must return Result \u2014 an exception reaching the host composition takes the enclosing screen with it.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "boundedComposables": {
-          "description": "Composables that must cap their own height, because the host renders them at an ADDITIVE slot \u2014 a non-scrolling column shared with its own content. A composable rendered at a replacement slot owns its region and must not be listed here.",
           "type": "array",
           "items": {
             "type": "string"

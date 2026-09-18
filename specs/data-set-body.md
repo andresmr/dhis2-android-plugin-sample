@@ -30,7 +30,7 @@ When the entry point decides what to render
 Then it chooses the data set slot, carrying those same arguments through unchanged
 
 @L3
-Given a plugin declaring both slots, with a data set UID configured and no override
+Given a plugin declaring both slots, with a data set UID configured
 When the harness picks the slot to render
 Then it picks the data set slot, because a replacement that is configured is the most specific slot
 the plugin could actually be rendered at
@@ -69,9 +69,8 @@ placeholder displays them rather than reading them.
 
 ## UI budget
 
-None of the home slot's applies. A replacement **owns** the region the host gives it, so filling the
-space is correct and scrolling is the plugin's job — `DataSetBodyPlaceholder` deliberately does not
-cap its height, which is why it is absent from `conventions.boundedComposables`.
+A replacement **owns** the region the host gives it, so filling the space is correct and scrolling is
+the plugin's job — `DataSetBodyPlaceholder` deliberately caps nothing.
 
-What it must respect instead is `LocalSlotContentPadding`: the host's save button floats over this
-region, and content that ignores the padding has a last row nobody can reach.
+What it must respect is `LocalSlotContentPadding`: the host's save button floats over this region,
+and content that ignores the padding has a last row nobody can reach.

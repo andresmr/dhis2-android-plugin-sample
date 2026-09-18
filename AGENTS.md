@@ -150,14 +150,12 @@ commonMain   commonMain      commonMain                        androidMain
 - **Repository interface** — the plugin's own vocabulary, returning `Result` of plain models.
 - **D2PluginRepository** — the *only* place `D2` appears, and `plugin.json`'s
   `conventions.sdkAllowed` is what says so; `tools/check-rules.py` fails when another file reaches
-  for the SDK. Labelling a tracked entity is **not** its job: `plugin-sdk`'s `TrackedEntityLabeller` owns that rule, because a tracked entity's attribute
-  values arrive in no order and the programme's `displayInList` configuration is what decides which
-  ones make a name. Every plugin rendering a person needs it, so none should re-derive it — and no
-  grep could ever check that they got it right, which is exactly why it is a function and not a rule. Its mapping and its error translation are
-  top-level functions so they can be tested without a `D2`: see `plugin/src/androidHostTest/`, which
-  builds real SDK values through their builders rather than mocking a fluent chain seven links deep.
-  What stays untested is the query itself. Moves blocking calls off the main thread
-  and translates `D2Error` into a message worth showing.
+  for the SDK. Use `D2` however your plugin needs to: nothing here narrows what you may read or
+  write, only *where* you may do it from. Its mapping and its error translation are top-level
+  functions so they can be tested without a `D2` — see `plugin/src/androidHostTest/`, which builds
+  real SDK values through their builders rather than mocking a fluent chain seven links deep. What
+  stays untested is the query itself. Moves blocking calls off the main thread and translates
+  `D2Error` into a message worth showing.
 
 **Why the interface earns its keep.** It is the seam that lets the ViewModel and UI be unit-tested on
 the JVM against a fake. It also keeps the SDK surface in one file, which matters because the next
@@ -177,13 +175,12 @@ anything was looking, which is why the distinction is written down rather than a
    `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
    real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
    it is the faster loop for pure UI work.
-3. **[checked]** **Stay short — at an additive slot.** At `HOME_ABOVE_PROGRAM_LIST` the host renders
-   the plugin in a non-scrolling `Column` above its own program list, so height taken there is height
-   taken from the host and anything past the viewport is unreachable. `PluginCard` caps itself with
-   `heightIn(max = …)` + `verticalScroll`, and `conventions.boundedComposables` is what checks it.
-   **A replacement slot is the opposite** — it owns the region it was given, so filling it is correct
-   and scrolling is the plugin's job. `DataSetBodyPlaceholder` deliberately caps nothing and is
-   deliberately absent from that list. See *Host slots*.
+3. **[prose]** **Design what your plugin needs; the host decides how much room it gets.** How a slot
+   is bounded is the host's business — it is the thing that knows which slot is being rendered and
+   what surrounds it. A replacement slot already works this way: it hands the plugin a region and a
+   `LocalSlotContentPadding`, and the plugin fills and scrolls it. The additive slot does not bound
+   its plugins yet (see the backlog), so until it does, `PluginCard` caps itself with
+   `heightIn(max = …)` + `verticalScroll` as a courtesy rather than a rule. See *Host slots*.
 4. **[checked]** A repository returns `Result`, never throws. An exception escaping into the host composition takes
    the enclosing screen with it, and Compose cannot express an error boundary around a composable
    call. This means catching `Throwable`, not just `D2Error` — see `io()` and `catchingD2` in
@@ -476,10 +473,13 @@ So the harness shrinks the device checklist; it does not empty it.
    dataStore is the only source of plugin config; there is no in-app fallback. There is no data-scope field to set — the plugin gets the
    SDK unrestricted, so the config only names *which* code to run.
 5. Install the Capture App and log in: `./gradlew :app:installDhis2Debug` in that checkout, which
-   installs as `com.dhis2.debug`. Plugins load when the home screen opens.
+   installs as `com.dhis2.debug`. Where the plugin appears is the slot its config names — at
+   `HOME_ABOVE_PROGRAM_LIST` it loads with the home screen; at `DATA_SET_INSTANCE_CONTENT` it
+   replaces the body of the data set instance screen, for the configured data sets only.
 
-For UI work without a server at all, the `@Preview`s in `MainActivity` render `PluginCard` against
-sample state. For the plugin against real data, `./gradlew :app:installDebug` (see *Development
+For UI work without a server at all, the `@Preview`s in `plugin/src/androidMain/…/ui/Previews.kt`
+render the seed's composables against sample state — beside the composables themselves, so `:app`
+names no plugin type at all. For the plugin against real data, `./gradlew :app:installDebug` (see *Development
 harness*).
 
 ## Entry-point contract
