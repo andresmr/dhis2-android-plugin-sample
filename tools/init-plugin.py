@@ -296,14 +296,10 @@ def collect(args):
         **({"slotConfig": slot_config} if (slot_config := slot_configuration(args)) else {}),
         "conventions": {
             "sdkAllowed": [
-                "plugin/src/androidMain/kotlin/{packagePath}/{entryPoint}.kt",
                 "plugin/src/androidMain/kotlin/{packagePath}/data/**/*.kt",
             ],
             "repositoryInterfaces": [
                 "plugin/src/commonMain/kotlin/{packagePath}/repository/*.kt",
-            ],
-            "boundedComposables": [
-                "plugin/src/commonMain/kotlin/{packagePath}/ui/PluginCard.kt",
             ],
         },
         "template": {

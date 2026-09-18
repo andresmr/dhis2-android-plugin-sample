@@ -34,7 +34,9 @@ specify.
 ### `## Logic scenarios`
 
 Given / When / Then, one blank line between scenarios, each preceded by a tag line `@L1`, `@L2`,
-… . These become tests in `plugin/src/commonTest/` and run on the JVM with no device.
+… . These become JVM tests, running with no device. Most belong in `plugin/src/commonTest/` against
+a fake repository; a scenario about `androidMain`'s own mapping goes in `plugin/src/androidHostTest/`,
+and one about the *harness* in `app/src/test/`. `tools/check-specs.py` scans all three.
 
 **The tag is the contract, and it is checked.** Every logic scenario must be claimed by a test — a
 comment `spec: <this file's name without .md> <id>` — or `./verify.sh` fails before it runs a single
@@ -42,9 +44,9 @@ test. `tools/check-specs.py` is the gate; it also catches a claim pointing at a 
 longer exists, a scenario added without a tag, and a JVM test claiming a device scenario.
 
 ```kotlin
-// spec: data-set-body L3
+// spec: first-card L2
 @Test
-fun `carry no people when there are none`() { … }
+fun `render a failed read rather than throwing`() { … }
 ```
 
 One test may claim several ids (`spec: my-feature L2, L3`), and several tests may claim one id. What
@@ -92,18 +94,16 @@ someone else could set the server up.
 
 ### `## UI budget`
 
-What this section says depends on the slot, and the two are opposites (see *Host slots* in
-`AGENTS.md`).
+What the plugin intends to occupy, and what it does when there is more to show than room to show it.
 
-At an **additive** slot the host renders the plugin in a **non-scrolling** column above its own
-program list, so height taken here is height taken from the app and anything past the viewport is
-unreachable rather than scrollable. State the resting height, what is visible without interaction,
-and what hides behind a toggle.
+You are not being asked to memorise the host's layout — how much room a slot gives is the host's
+business (see *Host slots* in `AGENTS.md`). What is worth writing down is your own intent: the
+resting height, what is visible without interaction, what hides behind a toggle, and what bounds a
+section that grows with the data.
 
-At a **replacement** slot the plugin owns the region it was given, so filling it is correct and
-scrolling is the plugin's job. There is no height to budget; what there is instead is
-`LocalSlotContentPadding`, the space the host's floating save button occupies over that region.
-State that it is applied, because content that ignores it has a last row nobody can reach.
+One host fact does reach the plugin, at a replacement slot: `LocalSlotContentPadding`, the space the
+host's floating save button occupies over the region. Say that it is applied, because content that
+ignores it has a last row nobody can reach.
 
 ## Why the split between logic and device scenarios
 
@@ -117,7 +117,7 @@ make them automated.)
 
 What *is* automated is everything the repository does either side of the SDK call: the mapping from
 SDK types to plain models, and the translation of failures. Those are functions, tested in
-`plugin/src/androidHostTest/` against real `TrackedEntityInstance` and `D2Error` values built
+`plugin/src/androidHostTest/` against real `D2Error` values built
 through the SDK's own builders — no `D2` and no mocks. Only the query itself needs a device, and its failure
 mode is "no rows", which shows up immediately.
 

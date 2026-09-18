@@ -43,7 +43,7 @@ fun quote(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\
 // Harness plumbing: stage `:plugin`'s Compose Multiplatform resources into this
 // app's assets directory at `composeResources/{package}/…` so CMP's
 // DefaultAndroidResourceReader (which reads via `Context.assets.open(path)`)
-// can find them when MainActivity instantiates ProgramOverviewPlugin directly for preview.
+// can find them when the plugin renders, since MainActivity loads it by FQCN rather than importing it.
 //
 // In production (Capture App host), the host's PluginSlot injects a filesystem-
 // backed ResourceReader — we don't need AssetManager there. The harness skips
@@ -219,9 +219,11 @@ dependencies {
     // a typealias onto whichever framework is present, and none is by default.
     testImplementation(kotlin("test-junit"))
 
-    // Compose tooling (@Preview + inspector). Kept on direct coordinates to avoid
-    // deprecated CMP extension accessors.
-    debugImplementation("org.jetbrains.compose.ui:ui-tooling:1.10.3")
-    implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.10.3")
+    // Compose tooling (@Preview + inspector). From the catalogue, not hardcoded coordinates: both
+    // entries ride `composeMultiplatform`, which is what :plugin compiles against — pinning them by
+    // hand here is how :app silently lags a version bump, and version skew is the one thing this
+    // repo has a whole Gradle task (checkHostAlignment) dedicated to catching.
+    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.compose.ui.tooling.preview)
 
 }

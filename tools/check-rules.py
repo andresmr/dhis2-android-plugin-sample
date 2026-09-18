@@ -7,17 +7,21 @@ of shared source, and host-provided dependencies declared `compileOnly`. A third
 there, cap-before-enrichment, which nothing here ever checked. Run them with
 `./gradlew :plugin:checkPluginConventions` — `./verify.sh` does.
 
-What stays here is what upstream has no business knowing: a repository interface and a bounded card
-are shapes this project chose, and the plugin system should not grow an interface for plugin authors
-to implement just so a rule can look for it. That is the line — a convention of the *plugin system*
-belongs in the build; a convention of *this plugin* belongs here.
+What stays here is what upstream has no business knowing: the repository seam is a shape this
+project chose, and the plugin system should not grow an interface for plugin authors to implement
+just so a rule can look for it. That is the line — a convention of the *plugin system* belongs in the
+build; a convention of *this plugin* belongs here.
 
-Where those files live is not hardcoded any more: `plugin.json`'s `conventions` says, in globs, and
-`./init.sh` rewrites nothing in this file. That also made two of the three rules better. `sdkAllowed`
-is a list of patterns rather than two filenames, so a second repository under `data/` is allowed
-without editing a script while anything *else* reaching for `D2` is still caught; and a renamed card
-now fails the height rule instead of silently removing it, which is what the old
-`if not path.is_file(): return` did.
+A third rule used to live here: that a named card capped its own height. It is gone, and
+deliberately. How much room a plugin may take is the *host's* business — it knows which slot is
+being rendered and what surrounds it — so making every plugin author police it was asking them to
+know the host's layout. A plugin should be free to design what it likes; see `AGENTS.md`'s
+*Host slots*.
+
+Where the remaining files live is not hardcoded: `plugin.json`'s `conventions` says, in globs, and
+`./init.sh` rewrites nothing in this file. `sdkAllowed` is a list of patterns rather than filenames,
+so a second repository under `data/` is allowed without editing a script while anything *else*
+reaching for `D2` is still caught.
 
 Original note, still true of what is left:
 
@@ -124,40 +128,12 @@ def check_repository_returns_result(failures, identity):
                 )
 
 
-def check_card_bounds_its_height(failures, identity):
-    """Architecture rule 3: an *additive* slot's column does not scroll, so the card bounds itself.
-
-    Only what `conventions.boundedComposables` names. A replacement slot owns the region it was
-    given, so a composable rendered there fills it and scrolls inside it — which is why
-    `DataSetBodyPlaceholder` is deliberately absent from that list rather than accidentally missing.
-    """
-    patterns = identity.get("conventions", {}).get("boundedComposables", [])
-    for pattern in patterns:
-        paths = paths_matching(pattern, identity)
-        if not paths:
-            failures.append(
-                "%s matched nothing. A composable named in conventions.boundedComposables that "
-                "no longer exists means the rule stopped being checked — rename it there, or "
-                "drop the entry deliberately" % pattern
-            )
-            continue
-        for path in paths:
-            code = code_of(path)
-            for needed, why in (
-                ("heightIn(", "caps its height, or it eats the host's program list"),
-                ("verticalScroll(", "scrolls its overflow, or content past the cap is unreachable"),
-            ):
-                if needed not in code:
-                    failures.append("%s: %s — no `%s` found" % (path, why, needed))
-
-
 def main():
     identity = load()
     failures = []
     checks = (
         check_sdk_is_in_one_file,
         check_repository_returns_result,
-        check_card_bounds_its_height,
     )
     for check in checks:
         check(failures, identity)
@@ -170,8 +146,7 @@ def main():
 
     print(
         "  %d rule(s) checked from plugin.json's conventions: SDK where declared, repository "
-        "returns Result, card bounds its height  (the plugin system's own rules: "
-        "checkPluginConventions)" % len(checks)
+        "returns Result  (the plugin system's own rules: checkPluginConventions)" % len(checks)
     )
     return 0
 

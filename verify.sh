@@ -176,4 +176,4 @@ echo
 echo "  ./gradlew :app:installDebug    runs the plugin against a real server (see AGENTS.md)"
 echo
 echo "That covers most of the checklist. What still needs the Capture App itself: the height budget,"
-echo "the class-loader reload, resource resolution, Koin isolation, and Compose version skew."
+echo "the class-loader reload, resource resolution, and Koin isolation."
