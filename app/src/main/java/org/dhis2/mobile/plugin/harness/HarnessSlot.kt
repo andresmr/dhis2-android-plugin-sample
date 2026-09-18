@@ -6,6 +6,7 @@ import org.dhis2.mobile.plugin.sdk.SlotArguments
 import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.arch.repositories.scope.RepositoryScope
 import org.hisp.dhis.android.core.organisationunit.OrganisationUnit
+import java.util.Date
 
 /**
  * Which slot the harness renders the plugin at, and what the host would tell it about the
@@ -145,14 +146,21 @@ private fun resolveDataSetInstance(d2: D2, dataSetUid: String): SlotResolution {
         ?.uid()
         ?: return SlotResolution.Unavailable(unassignedReason(d2, dataSetUid))
 
-    // Generated ascending, so the last is the newest period the data set is *open* for — this
-    // honours openFuturePeriods and dataInputPeriods, which picking a date by hand does not.
+    // Every period the data set is open for, ascending — the helper honours openFuturePeriods and
+    // dataInputPeriods, which picking a date by hand does not.
     //
     // It writes: the helper stores the periods it generates in the local Period table. That is the
     // same local insert the host's own data set screen performs, not a download.
-    val periodId = d2.periodModule().periodHelper()
-        .blockingGetPeriodsForDataSet(dataSetUid)
-        .lastOrNull()
+    val openPeriods = d2.periodModule().periodHelper().blockingGetPeriodsForDataSet(dataSetUid)
+
+    // The newest period that has actually *started*, not simply the newest open one. A data set
+    // with openFuturePeriods = 10 is genuinely open ten months ahead, and taking the last of those
+    // lands the harness on a period nobody has entered anything for and nobody would open — which
+    // looks like the harness resolving the wrong instance. Falling back to the last covers a data
+    // set whose input periods are entirely in the future, where there is nothing better to pick.
+    val now = Date()
+    val periodId = (openPeriods.lastOrNull { it.startDate()?.before(now) == true }
+        ?: openPeriods.lastOrNull())
         ?.periodId()
         ?: return SlotResolution.Unavailable(
             "Data set $dataSetUid has no periods to enter data for. Its period type is " +
