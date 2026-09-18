@@ -110,9 +110,9 @@ still be installed under its previous `applicationId`.
 
 ```properties
 sdk.dir=/Users/you/Library/Android/sdk
-dhis2.serverUrl=http://10.0.2.2:8080     # from an emulator, 10.0.2.2 is your host machine
-dhis2.username=admin
-dhis2.password=district
+dhis2.serverUrl=<your server>
+dhis2.username=<your username>
+dhis2.password=<your password>
 
 # Optional: only when plugin.json declares more than one slot and you want the other one.
 # harness.slot=HOME_ABOVE_PROGRAM_LIST

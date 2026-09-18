@@ -422,14 +422,16 @@ samples. Configure it in `local.properties`, which is gitignored and never commi
 
 ```properties
 sdk.dir=<your Android SDK>               # required by :plugin's build-tools pin, not just by AGP
-dhis2.serverUrl=<your server>            # from an emulator, 10.0.2.2 is the host machine
+dhis2.serverUrl=<your server>
 dhis2.username=<your username>
 dhis2.password=<your password>
-harness.slot=                            # optional; see Host slots
 ```
 
-Use a development server. The plugin reads only — but the harness logs in as a real user and syncs
-a real database onto the device, which is not something to point at production.
+Use a development server: the harness logs in as a real user and syncs a real database onto the
+device, which is not something to point at production.
+
+There is one more key, `harness.slot`, and it belongs to *Host slots* above — it only matters when
+`plugin.json` declares more than one.
 
 Then `./gradlew :app:installDebug`. It instantiates `D2`, logs in, downloads metadata, and resolves
 the slot to render — and it downloads **metadata only**. A plugin that reads rows of data will see
@@ -477,10 +479,10 @@ So the harness shrinks the device checklist; it does not empty it.
    Not 8080: a local DHIS2 instance usually owns it and answers with its login redirect
    instead of the bundle, which reads on device as the plugin silently not loading.
 4. Post that JSON to the DHIS2 server dataStore (`dhis2AndroidPlugins/config`) — POST
-   creates the key, PUT updates it afterwards. It points the app at
-   `http://10.0.2.2:8081/plugin-{version}.zip` (the bundle is named from the Gradle
-   module, not from the config's `id`). The dataStore is the only source of plugin
-   config; there is no in-app fallback. There is no data-scope field to set — the plugin gets the
+   creates the key, PUT updates it afterwards. Its `downloadUrl` is a guess the Gradle
+   plugin writes, so point it at wherever you served the zip; note the bundle is named
+   `plugin-{version}.zip` from the Gradle module, not from the config's `id`. The
+   dataStore is the only source of plugin config; there is no in-app fallback. There is no data-scope field to set — the plugin gets the
    SDK unrestricted, so the config only names *which* code to run.
 5. Install the Capture App and log in: `./gradlew :app:installDhis2Debug` in that checkout, which
    installs as `com.dhis2.debug`. Plugins load when the home screen opens.

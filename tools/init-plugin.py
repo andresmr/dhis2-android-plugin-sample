@@ -562,7 +562,8 @@ sdk.dir=/Users/you/Library/Android/sdk
 # The development harness (:app) only. The :plugin module never reads any of these.
 # Use a development server: the plugin reads, but the harness signs in as a real user and syncs a
 # real database onto the device.
-dhis2.serverUrl=http://10.0.2.2:8080
+# Any server you can reach. From an emulator, your own machine is 10.0.2.2, not localhost.
+dhis2.serverUrl=https://play.dhis2.org/dev
 dhis2.username=admin
 dhis2.password=district
 

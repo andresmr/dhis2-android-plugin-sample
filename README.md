@@ -27,20 +27,15 @@ This README is the install guide: what to install, and how to get a bundle onto 
 
 ## Prerequisites
 
-- **Android SDK** with `platforms;android-37.0` and `build-tools;36.1.0`. Install them through
-  Android Studio's SDK Manager, or:
-  ```bash
-  sdkmanager --install "platforms;android-37.0" "build-tools;36.1.0"
-  ```
-  The build-tools version is pinned in `plugin/build.gradle.kts`, because `d8` decides the DEX bytes
-  and a different version moves the bundle's checksum. If it is missing, configuration fails with a
+Android Studio, an emulator or device, and a JDK to launch the wrapper — the usual. Gradle comes
+bundled. Three things are specific to this project:
+
+- **`build-tools;36.1.0`, exactly.** It is *pinned* in `plugin/build.gradle.kts`, because `d8`
+  decides the DEX bytes and a different version moves the bundle's checksum. Install it from the
+  SDK Manager alongside `platforms;android-37.0`; if it is missing, configuration fails with a
   message naming it.
-- **A JDK** — any recent one, only to launch the Gradle wrapper. Gradle provisions its own JDK 21
-  toolchain (`gradle/gradle-daemon-jvm.properties`), so you do not need 21 installed.
-- **Gradle** — none to install; use the bundled `./gradlew` (9.5.1).
 - **A DHIS2 server.** The harness signs in as a real user and syncs a real database onto the
   device, so use a development instance rather than production.
-- **An emulator or a device.** From an emulator, `10.0.2.2` is your host machine.
 - **A Capture App checkout** on the branch carrying the plugin system — `poc/plugin-system` at the
   time of writing. You need it twice: for step 1, and to install the host in step 7.
 
@@ -69,9 +64,9 @@ version just leaves a stale jar in `~/.m2`.
 ```
 
 **You do not need this to run anything.** The harness works on the pristine template, so to watch
-the seed render against your own server first, skip to step 3 and come back. `./init.sh` settles
-*identity* — your package, plugin id and entry-point class — which is worth a minute because those
-end up in a server's dataStore configuration.
+the seed render against your own server first, do step 3 and press Play, then come back.
+`./init.sh` settles *identity* — your package, plugin id and entry-point class — which is worth a
+minute because those end up in a server's dataStore configuration.
 
 Asks for the plugin's name, Kotlin package, plugin id and entry-point class, then rewrites the
 repository as yours: the sources move to your package, `plugin.json` records the identity that the
@@ -98,7 +93,8 @@ it is gitignored and must never be committed.
 sdk.dir=/Users/you/Library/Android/sdk
 
 # Harness credentials, read into BuildConfig by app/build.gradle.kts.
-dhis2.serverUrl=http://10.0.2.2:8080
+# Any server you can reach. From an emulator, your own machine is 10.0.2.2, not localhost.
+dhis2.serverUrl=https://play.dhis2.org/dev
 dhis2.username=admin
 dhis2.password=district
 
@@ -135,6 +131,8 @@ Output lands in `plugin/build/outputs/plugin-bundle/`.
 
 ### 5. Try it against real data, without the host
 
+Press **Play** in Android Studio — the `app` run configuration — or from a terminal:
+
 ```bash
 ./gradlew :app:installDebug
 ```
@@ -162,9 +160,10 @@ redirect instead of the zip, which on the device looks exactly like the plugin s
 
 ### 7. Post the config to the server dataStore
 
-The `plugin-config.json` beside the bundle already has `version`, `checksum`, `id`, `entryPoint` and
-a `downloadUrl` pointing at `http://10.0.2.2:8081/…` — change the URL only for a physical device or
-another port. The dataStore is the only source of plugin configuration; there is no in-app fallback.
+The `plugin-config.json` beside the bundle already has `version`, `checksum`, `id` and `entryPoint`
+filled in. Its `downloadUrl` is a guess — the Gradle plugin writes one assuming an emulator reaching
+a static server on your own machine — so point it at wherever you actually served the zip. The
+dataStore is the only source of plugin configuration; there is no in-app fallback.
 
 ```bash
 curl -u admin:district -X POST \
