@@ -8,7 +8,6 @@
 # Usage:
 #   ./verify.sh            # spec gate + rule gates + tests + bundle, for your own :plugin
 #   ./verify.sh --cold     # same, but from a fresh Gradle home
-#   ./verify.sh --examples # also verify every module under examples/
 #
 # --cold re-resolves every dependency from scratch, so it catches stale local state. It is slow (a
 # few minutes) and worth it after touching settings.gradle.kts or the version catalogue.
@@ -28,12 +27,10 @@ BUNDLE_DIR="plugin/build/outputs/plugin-bundle"
 # array as unbound and aborts. The += form keeps the args properly quoted.
 GRADLE_ARGS=()
 
-EXAMPLES=false
 for arg in "$@"; do
   case "$arg" in
-    --examples) EXAMPLES=true ;;
     --cold) ;;
-    *) fail_early "unknown argument: $arg  (--cold, --examples)" ;;
+    *) fail_early "unknown argument: $arg  (--cold)" ;;
   esac
 done
 
@@ -55,7 +52,7 @@ fail() { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 
 # The project's claim is that a spec is the contract. Before this gate existed the pairing between a
 # scenario and the test asserting it was honour-system, and it had already slipped — half the
-# scenarios in the worked example had no test, and nothing noticed because nothing was looking.
+# scenarios in one spec had no test, and nothing noticed because nothing was looking.
 #
 # Runs first because it is the cheapest check here and the one most likely to be the real answer to
 # "is this done".
@@ -119,7 +116,8 @@ step "Plugin-system conventions + host alignment + unit tests (JVM — no device
 ./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} \
   :plugin:checkPluginConventions \
   checkHostAlignment \
-  :plugin:testAndroidHostTest
+  :plugin:testAndroidHostTest \
+  :app:testDebugUnitTest
 
 # ---------------------------------------------------------------- 4. the bundle
 
@@ -168,29 +166,6 @@ if [[ -f "$CONFIG" ]]; then
   echo "  only for a physical device or another port. POST to dhis2AndroidPlugins/config:"
   echo
   sed 's/^/    /' "$CONFIG"
-fi
-
-# ---------------------------------------------------------------- 7. the examples
-
-# Off by default: they are not your plugin, and a forker who has deleted examples/ should not be
-# told about them. On, they are checked exactly as :plugin is — an example whose gates are weaker
-# than the ones it demonstrates would be teaching the wrong thing.
-if [[ "$EXAMPLES" == true ]]; then
-  shopt -s nullglob
-  for example in examples/*/; do
-    [[ -f "$example/build.gradle.kts" ]] || continue
-    name="$(basename "$example")"
-    step "Example: $name"
-    if command -v python3 >/dev/null 2>&1; then
-      python3 tools/check-specs.py --module "examples/$name" \
-        || fail "examples/$name: spec and tests disagree (see above)"
-    fi
-    ./gradlew ${GRADLE_ARGS[@]+"${GRADLE_ARGS[@]}"} \
-      ":examples:$name:checkPluginConventions" \
-      ":examples:$name:testAndroidHostTest" \
-      ":examples:$name:buildPluginBundle"
-  done
-  shopt -u nullglob
 fi
 
 printf '\n\033[32m✓ verified\033[0m\n'

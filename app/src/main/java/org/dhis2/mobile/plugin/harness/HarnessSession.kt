@@ -3,12 +3,11 @@ package org.dhis2.mobile.plugin.harness
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.dhis2.mobile.plugin.sdk.SlotArguments
 import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.D2Configuration
 import org.hisp.dhis.android.core.D2Manager
-import org.hisp.dhis.android.core.arch.repositories.scope.RepositoryScope
 import org.hisp.dhis.android.core.maintenance.D2Error
-import org.hisp.dhis.android.core.program.ProgramType
 
 sealed interface HarnessState {
     /** [missing] names the `local.properties` keys that are absent. */
@@ -16,8 +15,15 @@ sealed interface HarnessState {
 
     data class Working(val step: String) : HarnessState
 
-    /** [programUid] is null when the plugin does not need tracker data, so none was downloaded. */
-    data class Ready(val d2: D2, val programUid: String?) : HarnessState
+    /**
+     * [slotArguments] is what the host would tell the plugin about the occurrence it is rendering
+     * — null at a slot that has nothing to say about what is on screen.
+     */
+    data class Ready(
+        val d2: D2,
+        val slot: SlotChoice.Chosen,
+        val slotArguments: SlotArguments?,
+    ) : HarnessState
 
     data class Failed(val step: String, val message: String) : HarnessState
 }
@@ -37,6 +43,16 @@ class HarnessSession(private val context: Context) {
     suspend fun start(): HarnessState = withContext(Dispatchers.IO) {
         val missing = missingCredentials()
         if (missing.isNotEmpty()) return@withContext HarnessState.NotConfigured(missing)
+
+        // Before the SDK, deliberately: this reads nothing but BuildConfig, so a plugin.json that
+        // names no renderable slot fails in a second, not after a first-run metadata download.
+        onStep(CHOOSING_SLOT)
+        val slot = when (val choice = harnessSlotChoice()) {
+            is SlotChoice.Unavailable ->
+                return@withContext HarnessState.Failed(CHOOSING_SLOT, choice.reason)
+
+            is SlotChoice.Chosen -> choice
+        }
 
         val d2 = step("Starting the SDK") {
             // Instantiating twice in one process throws, so a retry has to reuse the first one.
@@ -58,56 +74,44 @@ class HarnessSession(private val context: Context) {
         } ?: return@withContext failure
 
         step("Downloading metadata (first run only, this takes a few minutes)") {
-            if (d2.programModule().programs().blockingCount() == 0) {
+            // Organisation units, not programmes: every server has at least one, and a plugin
+            // targeting a data set may be running against a server with no tracker programme at
+            // all — which the old check read as "nothing downloaded yet", every single launch.
+            if (d2.organisationUnitModule().organisationUnits().blockingCount() == 0) {
                 d2.metadataModule().blockingDownload()
             }
         } ?: return@withContext failure
 
-        // Only for a plugin that reads rows. Downloading tracker data takes minutes on a first run,
-        // and a plugin counting programmes gets nothing from it but the wait — plus a line on screen
-        // about a programme it never looks at, which is worse than slow: it is misleading.
-        // Declared per module in plugin.json, as `harness.trackerData`.
-        if (!BuildConfig.HARNESS_TRACKER_DATA) return@withContext HarnessState.Ready(d2, null)
+        val resolving = resolvingStepFor(slot)
+        val resolution = step(resolving) { resolveSlotArguments(d2, slot) }
+            ?: return@withContext failure
+        if (resolution is SlotResolution.Unavailable) {
+            return@withContext HarnessState.Failed(resolving, resolution.reason)
+        }
 
-        val programUid = resolveProgramUid(d2)
-            ?: return@withContext HarnessState.Failed(
-                step = "Choosing a programme",
-                message = "This server has no tracker programme. Set dhis2.programUid in " +
-                    "local.properties to one this user can see.",
+        val arguments = (resolution as SlotResolution.Resolved).arguments
+
+        // The one thing the host's registry does that the harness otherwise never would: check the
+        // plugin would actually be selected here. With both sides derived from plugin.json this can
+        // only fire if they have come apart, which makes it a regression guard rather than a path a
+        // developer is meant to hit — but an unguarded `appliesTo` is a method nothing ever calls.
+        val slotConfig = harnessPluginMetadata().slotConfig[slot.injectionPoint]
+        if (arguments != null && !arguments.appliesTo(slotConfig)) {
+            return@withContext HarnessState.Failed(
+                resolving,
+                "The plugin would not be selected for this instance on a device: its slotConfig " +
+                    "does not cover it. plugin.json and what the harness resolved have come apart.",
             )
+        }
 
-        step("Downloading tracker data for $programUid") {
-            // Metadata brings programmes and stages but no enrolments or events, so without this the
-            // plugin renders real structure over zero rows — which reads as a plugin bug.
-            if (d2.enrollmentModule().enrollments().byProgram().eq(programUid).blockingCount() == 0) {
-                d2.trackedEntityModule().trackedEntityInstanceDownloader()
-                    .byProgramUid(programUid)
-                    .limitByProgram(true)
-                    .blockingDownload()
-            }
-        } ?: return@withContext failure
-
-        HarnessState.Ready(d2, programUid)
+        HarnessState.Ready(d2, slot, arguments)
     }
 
-    /**
-     * Chosen by programme *type*, because "has enrolments" would be circular — nothing has any until
-     * the download this choice feeds.
-     */
-    private fun resolveProgramUid(d2: D2): String? {
-        val configured = BuildConfig.PLUGIN_PROGRAM_UID
-        if (configured.isNotBlank()) return configured
-
-        // Ordered the same way D2PluginRepository orders it, so leaving dhis2.programUid blank
-        // downloads the very programme the plugin will resolve. Drop the ordering here and the two
-        // can disagree on a server with several tracker programmes, for no reason a reader could see.
-        return d2.programModule().programs()
-            .byProgramType().eq(ProgramType.WITH_REGISTRATION)
-            .orderByDisplayName(RepositoryScope.OrderByDirection.ASC)
-            .blockingGet()
-            .firstOrNull()
-            ?.uid()
-    }
+    /** The slot `plugin.json` names. */
+    private fun harnessSlotChoice(): SlotChoice = chooseSlot(
+        declared = harnessInjectionPoints(),
+        dataSetUids = harnessDataSetUids(),
+    )
 
     private fun missingCredentials(): List<String> = buildList {
         if (BuildConfig.DHIS2_SERVER_URL.isBlank()) add("dhis2.serverUrl")
@@ -158,4 +162,17 @@ private fun Throwable.describe(): String = when (this) {
     ).joinToString(" ").ifBlank { "D2Error with no description" }
 
     else -> message ?: this::class.simpleName ?: "unknown error"
+}
+
+/**
+ * Step names, as constants rather than literals.
+ *
+ * `onStep` prints one and [HarnessState.Failed] carries another, and when they are two copies of
+ * the same sentence they drift — the screen then names a step that never ran.
+ */
+private const val CHOOSING_SLOT = "Choosing a slot"
+
+private fun resolvingStepFor(slot: SlotChoice.Chosen): String = when (slot.dataSetUid) {
+    null -> "Preparing the ${slot.injectionPoint.name} slot"
+    else -> "Resolving the data set instance for ${slot.dataSetUid}"
 }

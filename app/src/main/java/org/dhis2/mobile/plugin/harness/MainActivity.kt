@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.dhis2.mobile.plugin.harness.ui.theme.HarnessTheme
+import org.dhis2.mobile.plugin.sdk.DataSetInstanceSlotArguments
 import org.dhis2.mobile.plugin.sdk.Dhis2Plugin
 
 /**
@@ -29,8 +30,8 @@ import org.dhis2.mobile.plugin.sdk.Dhis2Plugin
  * Not the Capture App — `AGENTS.md` lists what only the real host can exercise.
  *
  * Note what this file does **not** import: the plugin's entry point, its models, or its card. It
- * loads the entry point by name, exactly as the host does, so it is the same code path whichever
- * plugin `plugin.json` names — your own, or one of the `examples/`.
+ * loads the entry point by name, exactly as the host does — the same code path, and the same
+ * failure modes, as a device.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,15 +73,7 @@ class MainActivity : ComponentActivity() {
                                 HarnessMessage(
                                     title = "Connected — ${BuildConfig.PLUGIN_NAME}",
                                     body = "Entry point ${BuildConfig.PLUGIN_ENTRY_POINT}\n" +
-                                        when (val programUid = current.programUid) {
-                                            // Only mention a programme when one was actually
-                                            // downloaded. Naming one a plugin never reads is how a
-                                            // developer concludes the harness picked the wrong thing.
-                                            null -> "Metadata only — this plugin does not read " +
-                                                "tracker data (harness.trackerData in plugin.json)"
-
-                                            else -> "Downloaded tracker data for programme $programUid"
-                                        },
+                                        slotDescription(current),
                                 )
                                 when (val loaded = rememberPlugin()) {
                                     is PluginLoad.Failed -> HarnessMessage(
@@ -91,6 +84,7 @@ class MainActivity : ComponentActivity() {
                                     is PluginLoad.Loaded -> PluginHost(
                                         plugin = loaded.plugin,
                                         context = HarnessPluginContext(current.d2),
+                                        slotArguments = current.slotArguments,
                                     )
                                 }
                             }
@@ -100,6 +94,22 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+/**
+ * Which slot is on screen, and for a replacement, the instance it was given.
+ *
+ * Worth the four lines: without them "the harness resolved the wrong instance" and "the plugin is
+ * broken" look identical, and the only way to tell them apart is to read the source.
+ */
+private fun slotDescription(ready: HarnessState.Ready): String {
+    val arguments = ready.slotArguments as? DataSetInstanceSlotArguments
+        ?: return "Slot ${ready.slot.injectionPoint.name} — no arguments; it is the whole screen"
+
+    return "Slot ${ready.slot.injectionPoint.name}\n" +
+        "Data set ${arguments.dataSetUid}, period ${arguments.periodId}\n" +
+        "Org unit ${arguments.organisationUnitUid}, " +
+        "attr. option combo ${arguments.attributeOptionComboUid}"
 }
 
 /** The outcome of looking the entry point up by name — a real failure mode, so it has a state. */

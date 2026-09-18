@@ -35,7 +35,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from identity import (  # noqa: E402
+    CONFIGURED_INJECTION_POINTS,
     RESERVED,
+    SUPPORTED_INJECTION_POINTS,
     TEMPLATE,
     derive,
     is_pristine,
@@ -51,10 +53,9 @@ REWRITE_SUFFIXES = {
     ".kt", ".kts", ".xml", ".md", ".py", ".pro", ".properties", ".json", ".sh", ".yml", ".yaml",
 }
 
-# examples/ keeps the template's names on purpose: it is a worked example *of* that plugin, and
-# rewriting it would make it describe something that does not exist. LICENSE is a legal statement
-# no tool should edit. identity.py holds the template constants the rewrite is driven by.
-REWRITE_EXCLUDED = ("examples/", "LICENSE", "tools/identity.py", "tools/init-plugin.py")
+# LICENSE is a legal statement no tool should edit. identity.py holds the template constants the
+# rewrite is driven by, and init-plugin.py is the rewriter.
+REWRITE_EXCLUDED = ("LICENSE", "tools/identity.py", "tools/init-plugin.py")
 
 SKIPPED_DIRS = {".git", "build", ".gradle", ".idea", ".kotlin"}
 
@@ -285,7 +286,14 @@ def collect(args):
         "package": package,
         "entryPoint": entry_point,
         "version": version,
-        "injectionPoints": ["HOME_ABOVE_PROGRAM_LIST"],
+        # Carried through the rename, never rewritten from a literal. These are the one part of
+        # plugin.json the build reads and nothing in the tree mirrors, so they are exactly what an
+        # author sets by hand before running this — and an init that overwrote them would silently
+        # retarget a data-set plugin at the home screen.
+        "injectionPoints": injection_points(args),
+        # Omitted entirely when empty rather than written as {}: an absent key is "nothing to
+        # configure", which is what an additive-only plugin means.
+        **({"slotConfig": slot_config} if (slot_config := slot_configuration(args)) else {}),
         "conventions": {
             "sdkAllowed": [
                 "plugin/src/androidMain/kotlin/{packagePath}/{entryPoint}.kt",
@@ -310,6 +318,42 @@ def collect(args):
         die("those values will not work:\n" + "\n".join("  - %s" % p for p in problems))
 
     return derive(dict(data))
+
+
+def existing():
+    """The plugin.json already here, or {} — a fresh clone always has one, a retry may not."""
+    try:
+        return json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def injection_points(args):
+    """The slots to declare: the flags, else whatever plugin.json already says, else the home slot.
+
+    The default is the additive slot because it is the one that needs no configuration — a fork
+    that says nothing gets something that renders.
+    """
+    if args.injection_point:
+        return list(dict.fromkeys(args.injection_point))
+    return existing().get("injectionPoints") or ["HOME_ABOVE_PROGRAM_LIST"]
+
+
+def slot_configuration(args):
+    """`slotConfig`, from the flags or carried through unchanged.
+
+    `--injection-point DATA_SET_INSTANCE_CONTENT` with no `--data-set-uid` writes an empty list
+    rather than nothing: the slot is then declared and visibly unconfigured, which is what
+    `tools/check-identity.py` reports. Silently omitting it would look configured and render nothing.
+    """
+    points = injection_points(args)
+    if not args.injection_point:
+        carried = existing().get("slotConfig") or {}
+        return {slot: value for slot, value in carried.items() if slot in points}
+
+    if "DATA_SET_INSTANCE_CONTENT" not in points:
+        return {}
+    return {"DATA_SET_INSTANCE_CONTENT": {"dataSetUids": list(dict.fromkeys(args.data_set_uid))}}
 
 
 # ─────────────────────────────────────────────────────────────── the work
@@ -518,16 +562,10 @@ sdk.dir=/Users/you/Library/Android/sdk
 # The development harness (:app) only. The :plugin module never reads any of these.
 # Use a development server: the plugin reads, but the harness signs in as a real user and syncs a
 # real database onto the device.
-dhis2.serverUrl=http://10.0.2.2:8080
+# Any server you can reach. From an emulator, your own machine is 10.0.2.2, not localhost.
+dhis2.serverUrl=https://play.dhis2.org/dev
 dhis2.username=admin
 dhis2.password=district
-
-# Optional. Which programme the harness downloads tracker data for. Blank picks the first tracker
-# programme by name.
-dhis2.programUid=
-
-# Optional. Which plugin the harness builds and renders. Blank or absent means your own :plugin.
-# harness.module=:examples:program-summary
 """
 
 
@@ -545,23 +583,6 @@ def clean_build_output(plan):
             plan.append("delete %s" % name)
             if not plan.dry_run:
                 shutil.rmtree(path, ignore_errors=True)
-    for example in sorted((ROOT / "examples").glob("*/build")):
-        plan.append("delete %s" % example.relative_to(ROOT))
-        if not plan.dry_run:
-            shutil.rmtree(example, ignore_errors=True)
-
-
-def remove_examples(plan):
-    """A fork does not want the template's examples, and check-identity would flag them forever."""
-    examples = ROOT / "examples"
-    if not examples.is_dir():
-        return
-    plan.append("delete examples/ (the template's own worked examples)")
-    if plan.dry_run:
-        return
-    if git_available():
-        run(["git", "rm", "-r", "-q", "examples"], check=False)
-    shutil.rmtree(examples, ignore_errors=True)
 
 
 # ─────────────────────────────────────────────────────────────── reporting
@@ -575,6 +596,14 @@ def report(target, verified):
     say("  package       %s" % target["package"])
     say("  entry point   %s" % target["entryPointFqcn"])
     say("  version       %s" % target["version"])
+    say("  slots         %s" % ", ".join(target["injectionPoints"]))
+    for slot, field in CONFIGURED_INJECTION_POINTS.items():
+        if slot not in target["injectionPoints"]:
+            continue
+        configured = (target.get("slotConfig", {}).get(slot) or {}).get(field) or []
+        say("                %s.%s = %s"
+            % (slot, field, ", ".join(configured) if configured
+               else "(none yet — it replaces nothing until you add one)"))
     say()
     if verified:
         say("  ./verify.sh passed. Everything is staged but NOT committed — review it, then:")
@@ -608,6 +637,8 @@ def report_json(target, verified):
         "entryPoint": target["entryPoint"],
         "entryPointFqcn": target["entryPointFqcn"],
         "version": target["version"],
+        "injectionPoints": target["injectionPoints"],
+        "slotConfig": target.get("slotConfig", {}),
         "verified": verified,
         "committed": False,
     }, indent=2))
@@ -630,6 +661,11 @@ examples:
             --plugin-id org.myorg.immunisation-coverage --entry-point ImmunisationPlugin --yes
       Fully determined, no prompts. This is the form to use from an agent or a script.
 
+  ./init.sh --name "Monthly Stock" --package org.myorg.stock \\
+            --injection-point DATA_SET_INSTANCE_CONTENT --data-set-uid BfMAe6Itzgt --yes
+      A plugin that replaces the body of a data set instance screen. Without the flags, whatever
+      plugin.json already declares is carried through unchanged.
+
   ./init.sh --check     Report the state and change nothing. 0 initialised, 3 pristine, 4 partial.
   ./init.sh --dry-run   Print every move, rename and rewrite, and change nothing.
 """,
@@ -640,10 +676,16 @@ examples:
     parser.add_argument("--entry-point", help="entry-point class name, e.g. ImmunisationPlugin")
     parser.add_argument("--version", help="initial version (default 0.1.0)")
     parser.add_argument("--slug", help="Gradle rootProject.name (default: kebab-case of --name)")
-    parser.add_argument("--keep-examples", action="store_true",
-                        help="keep examples/ instead of deleting it")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, change nothing")
     parser.add_argument("--check", action="store_true", help="report the state, change nothing")
+    # Repeatable, and only for the fully-determined path. Interactively, plugin.json is the place
+    # to say this: it is one file, already schema'd, and the only thing the build reads.
+    parser.add_argument("--injection-point", action="append", default=[],
+                        metavar="SLOT", choices=SUPPORTED_INJECTION_POINTS,
+                        help="host slot to declare; repeat for several "
+                             "(default: keep what plugin.json says)")
+    parser.add_argument("--data-set-uid", action="append", default=[], metavar="UID",
+                        help="data set the DATA_SET_INSTANCE_CONTENT slot applies to; repeatable")
     parser.add_argument("--json", action="store_true", help="machine-readable result on stdout")
     parser.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     parser.add_argument("--force", action="store_true",
@@ -711,8 +753,6 @@ def main(argv=None):
 
     move_sources(candidates, target, use_git, plan)
     rename_entry_point(candidates, target, use_git, plan)
-    if not args.keep_examples:
-        remove_examples(plan)
     rewrite(substitutions(sources, target), plan)
     write_local_properties(plan)
     clean_build_output(plan)

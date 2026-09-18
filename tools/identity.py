@@ -28,10 +28,14 @@ TEMPLATE = {
     "entryPoint": "MyPlugin",
 }
 
-# plugin-sdk-gradle's DataStoreSnippet hardcodes the list it writes into plugin-config.json, and
-# PluginBundleExtension has no injectionPoints property to override it. So any other value here
-# would be a claim the bundle does not honour, and a grant nothing checks reads like a control.
-SUPPORTED_INJECTION_POINTS = ["HOME_ABOVE_PROGRAM_LIST"]
+# The slots plugin-sdk defines. A value outside this list is a claim the host cannot honour: it
+# would reach the generated plugin-config.json, and an app that has never heard of the slot drops it
+# on the way in — so the plugin would render nowhere, with nothing here having said so.
+SUPPORTED_INJECTION_POINTS = ["HOME_ABOVE_PROGRAM_LIST", "DATA_SET_INSTANCE_CONTENT"]
+
+# Slots that render nowhere until an administrator says which objects they apply to, and the field
+# in `slotConfig` that carries those objects. Mirrors InjectionPoint.requiresConfiguration.
+CONFIGURED_INJECTION_POINTS = {"DATA_SET_INSTANCE_CONTENT": "dataSetUids"}
 
 PACKAGE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
 PLUGIN_ID = re.compile(r"^[a-z][a-z0-9]*(\.[a-z0-9][a-z0-9-]*)+$")
@@ -94,15 +98,45 @@ def validate(data):
             "reaches Compose Resources as a backtick-escaped package." % data["slug"]
         )
 
-    points = data.get("injectionPoints") or SUPPORTED_INJECTION_POINTS
+    # Required, and strictly. An absent list used to mean "all of them", which reads as harmless
+    # and is not: the build writes it into plugin-config.json, the harness picks a slot from it, and
+    # a plugin that never said where it renders would render in places its author never considered.
+    points = data.get("injectionPoints") or []
+    if not points:
+        problems.append(
+            "injectionPoints is missing. Name the slot or slots this plugin renders in — %s. It "
+            "reaches the generated plugin-config.json, and the harness renders the slot it names."
+            % ", ".join(SUPPORTED_INJECTION_POINTS)
+        )
     unsupported = [p for p in points if p not in SUPPORTED_INJECTION_POINTS]
     if unsupported:
         problems.append(
-            "injectionPoints names %s, which the bundle cannot honour: plugin-sdk-gradle's "
-            "DataStoreSnippet hardcodes %s and PluginBundleExtension has no injectionPoints "
-            "property. Add it upstream first — a field that lies is worse than no field."
+            "injectionPoints names %s, which plugin-sdk does not define. Known slots are %s — a "
+            "name outside them is dropped by the host on the way in, so the plugin would render "
+            "nowhere with nothing having said so."
             % (", ".join(unsupported), SUPPORTED_INJECTION_POINTS)
         )
+
+    problems.extend(validate_slot_config(data, points))
+
+    return problems
+
+
+def validate_slot_config(data, points):
+    """`slotConfig` must configure slots this plugin actually declares, and nothing else."""
+    problems = []
+    slot_config = data.get("slotConfig") or {}
+
+    if not isinstance(slot_config, dict):
+        return ['slotConfig should be an object keyed by injection point.']
+
+    for slot in slot_config:
+        if slot not in points:
+            problems.append(
+                'slotConfig configures %s, which is not in injectionPoints. The host reads the two '
+                "together, so a configuration for a slot the plugin does not declare is dead text."
+                % slot
+            )
 
     return problems
 

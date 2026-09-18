@@ -15,14 +15,9 @@ the same file would still need the conversation, something it learned is missing
 
 Start from `TEMPLATE.md` — it is the five headings with the guidance inline as comments you delete.
 
-`first-card.md` is the seed's own spec: two logic scenarios and two device ones, small enough to
-read in a minute and meant to be replaced rather than extended.
-
-One complete example lives with the plugin it describes, in
-[`examples/program-summary/specs/`](../examples/program-summary/specs). It was written after the
-fact so the spec and the code can be read side by side — the normal direction is the other one, spec
-first. Note that an example's specs are checked against *its* tests
-(`tools/check-specs.py --module examples/program-summary`), never against yours.
+`first-card.md` and `data-set-body.md` are the seed's own, one per host slot. Both were written
+after the fact so the spec and the code can be read side by side — the normal direction is the other
+one, spec first.
 
 ## The sections
 
@@ -47,7 +42,7 @@ test. `tools/check-specs.py` is the gate; it also catches a claim pointing at a 
 longer exists, a scenario added without a tag, and a JVM test claiming a device scenario.
 
 ```kotlin
-// spec: example-program-summary L3
+// spec: data-set-body L3
 @Test
 fun `carry no people when there are none`() { … }
 ```
@@ -97,10 +92,18 @@ someone else could set the server up.
 
 ### `## UI budget`
 
-The host renders the plugin in a **non-scrolling** column above its own program list, so height
-taken here is height taken from the app, and anything past the viewport is unreachable rather than
-scrollable. State the resting height, what is visible without interaction, and what hides behind a
-toggle.
+What this section says depends on the slot, and the two are opposites (see *Host slots* in
+`AGENTS.md`).
+
+At an **additive** slot the host renders the plugin in a **non-scrolling** column above its own
+program list, so height taken here is height taken from the app and anything past the viewport is
+unreachable rather than scrollable. State the resting height, what is visible without interaction,
+and what hides behind a toggle.
+
+At a **replacement** slot the plugin owns the region it was given, so filling it is correct and
+scrolling is the plugin's job. There is no height to budget; what there is instead is
+`LocalSlotContentPadding`, the space the host's floating save button occupies over that region.
+State that it is applied, because content that ignores it has a last row nobody can reach.
 
 ## Why the split between logic and device scenarios
 

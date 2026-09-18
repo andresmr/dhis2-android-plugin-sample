@@ -39,11 +39,3 @@ jobs:
 
       - name: This plugin's own rules
         run: python3 tools/check-rules.py
-
-      - name: The examples' gates
-        run: |
-          for example in examples/*/; do
-            [ -f "$example/build.gradle.kts" ] || continue
-            echo "--- $example"
-            python3 tools/check-specs.py --module "${example%/}"
-          done

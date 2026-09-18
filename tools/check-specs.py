@@ -26,20 +26,21 @@ Device scenarios are deliberately *not* required to have tests. They are the hal
 and this script prints them as the manual checklist instead.
 
 Usage:
-    python3 tools/check-specs.py                                # your own plugin: specs/ + plugin/src/
-    python3 tools/check-specs.py --module examples/program-summary
+    python3 tools/check-specs.py        # specs/ against plugin/src/
 """
 
 import re
 import sys
 from pathlib import Path
 
-# Defaults point at the fork's own plugin. `--module examples/program-summary` points them at a
-# self-contained example instead: the specs and the tests that claim them move together, so an
-# example's scenarios are never the fork's obligation and deleting examples/ leaves nothing behind.
-DEFAULT_SPEC_DIR = Path("specs")
-DEFAULT_SOURCE_ROOT = Path("plugin/src")
+# One plugin per fork, so there is one place specs live and one place their tests do.
+SPEC_DIR = Path("specs")
+SOURCE_ROOT = Path("plugin/src")
 TEST_SOURCE_SETS = ("commonTest", "androidHostTest")
+# The harness is not the plugin, but a scenario about which slot it renders is still a scenario of
+# this repository, and a spec that could not claim one would push it into the manual checklist for
+# no reason but where the file happens to live.
+EXTRA_TEST_DIRS = (Path("app/src/test"),)
 # Not specs: one is the format's own documentation, the other the blank to copy. Both talk *about*
 # Given/When/Then, so parsing them as specs would invent scenarios that do not exist.
 NOT_A_SPEC = {"README.md", "TEMPLATE.md"}
@@ -156,26 +157,15 @@ def parse_claims(test_dirs):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    module = Path(".")
-    if argv[:1] == ["--module"]:
-        if len(argv) < 2:
-            sys.exit("--module needs a directory, e.g. --module examples/program-summary")
-        module = Path(argv[1])
-        argv = argv[2:]
     if argv:
         sys.exit("unexpected argument(s): %s" % " ".join(argv))
 
-    # At the repo root the plugin under test is :plugin, so its sources are a directory down. A
-    # module passed with --module *is* the plugin, so its sources sit directly inside it.
-    spec_dir = module / DEFAULT_SPEC_DIR
-    source_root = DEFAULT_SOURCE_ROOT if module == Path(".") else module / "src"
-    test_dirs = tuple(source_root / name for name in TEST_SOURCE_SETS)
+    spec_dir = SPEC_DIR
+    test_dirs = tuple(SOURCE_ROOT / name for name in TEST_SOURCE_SETS) + EXTRA_TEST_DIRS
 
     if not spec_dir.is_dir():
-        sys.exit(
-            "%s does not exist. Specs live beside the module they describe: specs/ for your own "
-            "plugin, examples/<name>/specs/ for an example." % spec_dir
-        )
+        sys.exit("%s does not exist. One file per feature lives there; see specs/README.md."
+                 % spec_dir)
 
     specs = [
         parse_spec(path)

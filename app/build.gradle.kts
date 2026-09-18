@@ -29,6 +29,16 @@ val localProperties = Properties().apply {
 
 fun harnessProperty(key: String): String = localProperties.getProperty(key).orEmpty()
 
+/**
+ * A Java string literal, for a value that may itself contain quotes.
+ *
+ * `buildConfigField` pastes its third argument into `BuildConfig.java` verbatim, so the usual
+ * `"\"$value\""` idiom works only for values with no quote in them. `slotConfig` is JSON, which is
+ * nothing but quotes: unescaped, it closes the literal early and the build fails with a syntax
+ * error in a generated file that never mentions plugin.json.
+ */
+fun quote(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Harness plumbing: stage `:plugin`'s Compose Multiplatform resources into this
 // app's assets directory at `composeResources/{package}/…` so CMP's
@@ -49,19 +59,20 @@ val dhis2PluginEntryPointFqcn: String by extra
 val dhis2PluginVersion: String by extra
 val dhis2ResourcePackage: String by extra
 val dhis2HarnessApplicationId: String by extra
-val dhis2HarnessTrackerData: String by extra
+
+// Which slots this plugin declares, and how they are configured — both straight from plugin.json.
+// The harness renders the slot these name (see HarnessSlot.kt) instead of a constant someone edits,
+// and hands the plugin the same metadata a server dataStore would.
+val dhis2InjectionPoints: String by extra
+val dhis2SlotConfigJson: String by extra
 
 // Must equal :plugin's packageOfResClass, or the staged assets land at a path CMP's reader never
 // looks in and every Res.string.* resolves to nothing — with no error anywhere. Both come from
 // plugin.json, which is the only reason that sentence is now a fact rather than a hope.
 val pluginResourcePackage = dhis2ResourcePackage
 
-// Which plugin the harness hosts: your own :plugin, or one of the examples. Resolved in
-// settings.gradle.kts from `harness.module` in local.properties, which is also where the identity
-// above came from — so the module, its package and its entry point can never be from two different
-// plugins.
-val dhis2HarnessModule: String by extra
-val pluginProject = project(dhis2HarnessModule)
+// One plugin per fork, so there is only ever one module to host.
+val pluginProject = project(":plugin")
 
 abstract class StagePluginAssets : DefaultTask() {
     @get:InputDirectory
@@ -115,7 +126,6 @@ android {
         buildConfigField("String", "DHIS2_SERVER_URL", "\"${harnessProperty("dhis2.serverUrl")}\"")
         buildConfigField("String", "DHIS2_USERNAME", "\"${harnessProperty("dhis2.username")}\"")
         buildConfigField("String", "DHIS2_PASSWORD", "\"${harnessProperty("dhis2.password")}\"")
-        buildConfigField("String", "PLUGIN_PROGRAM_UID", "\"${harnessProperty("dhis2.programUid")}\"")
 
         // The plugin's identity, so MainActivity can load it by name the way the host does rather
         // than importing its entry point. See MainActivity.kt.
@@ -124,9 +134,11 @@ android {
         buildConfigField("String", "PLUGIN_ENTRY_POINT", "\"$dhis2PluginEntryPointFqcn\"")
         buildConfigField("String", "PLUGIN_VERSION", "\"$dhis2PluginVersion\"")
 
-        // Whether the hosted plugin needs enrolments and tracked entities, from its plugin.json.
-        // The seed counts programmes, so metadata is enough and it skips a multi-minute download.
-        buildConfigField("boolean", "HARNESS_TRACKER_DATA", dhis2HarnessTrackerData)
+        // The slots plugin.json declares, and their configuration. These are what the harness picks
+        // a slot from, and what it hands the plugin as PluginMetadata — so `appliesTo()` here
+        // answers what it would answer on a device.
+        buildConfigField("String", "PLUGIN_INJECTION_POINTS", "\"$dhis2InjectionPoints\"")
+        buildConfigField("String", "PLUGIN_SLOT_CONFIG", quote(dhis2SlotConfigJson))
     }
 
     buildFeatures {
@@ -171,6 +183,11 @@ androidComponents {
 dependencies {
     implementation(pluginProject)
     implementation(libs.plugin.sdk)
+    // PluginMetadata.slotConfig is Map<InjectionPoint, JsonObject>, and plugin-sdk publishes
+    // kotlinx-serialization-json in androidRuntimeElements only — never on a consumer's *compile*
+    // classpath. Without this, naming JsonObject here fails to compile with an error that says
+    // nothing about Gradle variants. Pinned to what plugin-sdk's own metadata requires.
+    implementation(libs.kotlinx.serialization.json)
     // A real dependency here, not compileOnly: :app is the harness, not a shipped plugin, and it is
     // the thing that constructs the D2 the plugin is handed.
     implementation(libs.dhis2.android.core)
@@ -195,6 +212,12 @@ dependencies {
     implementation(compose.ui)
     implementation(compose.material3)
     implementation(compose.components.resources)
+
+    // The harness's own unit tests. Only its pure logic is reachable — everything past choosing a
+    // slot needs a real D2, which no JVM test can construct.
+    // kotlin("test") alone leaves kotlin.test.Test unbound in an Android module — the annotation is
+    // a typealias onto whichever framework is present, and none is by default.
+    testImplementation(kotlin("test-junit"))
 
     // Compose tooling (@Preview + inspector). Kept on direct coordinates to avoid
     // deprecated CMP extension accessors.

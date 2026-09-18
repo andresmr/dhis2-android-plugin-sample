@@ -27,20 +27,15 @@ This README is the install guide: what to install, and how to get a bundle onto 
 
 ## Prerequisites
 
-- **Android SDK** with `platforms;android-37.0` and `build-tools;36.1.0`. Install them through
-  Android Studio's SDK Manager, or:
-  ```bash
-  sdkmanager --install "platforms;android-37.0" "build-tools;36.1.0"
-  ```
-  The build-tools version is pinned in `plugin/build.gradle.kts`, because `d8` decides the DEX bytes
-  and a different version moves the bundle's checksum. If it is missing, configuration fails with a
+Android Studio, an emulator or device, and a JDK to launch the wrapper — the usual. Gradle comes
+bundled. Three things are specific to this project:
+
+- **`build-tools;36.1.0`, exactly.** It is *pinned* in `plugin/build.gradle.kts`, because `d8`
+  decides the DEX bytes and a different version moves the bundle's checksum. Install it from the
+  SDK Manager alongside `platforms;android-37.0`; if it is missing, configuration fails with a
   message naming it.
-- **A JDK** — any recent one, only to launch the Gradle wrapper. Gradle provisions its own JDK 21
-  toolchain (`gradle/gradle-daemon-jvm.properties`), so you do not need 21 installed.
-- **Gradle** — none to install; use the bundled `./gradlew` (9.5.1).
-- **A DHIS2 server.** The plugin only reads, but the harness signs in and downloads metadata and
-  tracker data, so use a development instance rather than production.
-- **An emulator or a device.** From an emulator, `10.0.2.2` is your host machine.
+- **A DHIS2 server.** The harness signs in as a real user and syncs a real database onto the
+  device, so use a development instance rather than production.
 - **A Capture App checkout** on the branch carrying the plugin system — `poc/plugin-system` at the
   time of writing. You need it twice: for step 1, and to install the host in step 7.
 
@@ -68,10 +63,20 @@ version just leaves a stale jar in `~/.m2`.
 ./init.sh
 ```
 
+**You do not need this to run anything.** The harness works on the pristine template, so to watch
+the seed render against your own server first, do step 3 and press Play, then come back.
+`./init.sh` settles *identity* — your package, plugin id and entry-point class — which is worth a
+minute because those end up in a server's dataStore configuration.
+
 Asks for the plugin's name, Kotlin package, plugin id and entry-point class, then rewrites the
 repository as yours: the sources move to your package, `plugin.json` records the identity that the
-build and every gate read, `examples/` is removed, and `./verify.sh` runs. Nothing is committed —
-review `git diff --staged` first.
+build and every gate read, and `./verify.sh` runs. Nothing is committed — review `git diff --staged`
+first.
+
+**Which host slot your plugin renders in is `plugin.json`'s `injectionPoints`**, and `./init.sh`
+carries whatever it says through the rename rather than overwriting it — so set it before you run,
+or pass `--injection-point` and `--data-set-uid`. The template ships targeting the home screen. See
+*Host slots* in [`AGENTS.md`](AGENTS.md).
 
 Pass the values as flags to skip the prompts; `./init.sh --help` lists them, and `--dry-run` shows
 exactly what would change. Already done it? `./init.sh --check` says so.
@@ -88,21 +93,18 @@ it is gitignored and must never be committed.
 sdk.dir=/Users/you/Library/Android/sdk
 
 # Harness credentials, read into BuildConfig by app/build.gradle.kts.
-dhis2.serverUrl=http://10.0.2.2:8080
+# Any server you can reach. From an emulator, your own machine is 10.0.2.2, not localhost.
+dhis2.serverUrl=https://play.dhis2.org/dev
 dhis2.username=admin
 dhis2.password=district
-dhis2.programUid=
-
-# Optional. Which plugin the harness builds and renders; blank means your own :plugin.
-# harness.module=:examples:program-summary
 ```
 
 **Use a development server.** A plugin only reads, but the harness signs in as a real user and syncs
 a real database onto the device.
 
-`dhis2.programUid` chooses only which programme the **harness** downloads tracker data for. Leave it
-blank and it picks the first tracker programme by name. A plugin is never told which programme to
-read — the dataStore config has no field for one.
+Which slot the harness renders comes from `plugin.json`'s `injectionPoints` — the same field that
+reaches the dataStore config — so the harness and a device cannot disagree about it. See *Host
+slots* in [`AGENTS.md`](AGENTS.md).
 
 ### 4. Build and verify
 
@@ -118,20 +120,21 @@ class-level check that the bundle carries nothing the host already owns is the G
 prints the bundle path, its checksum, and a ready-to-post `plugin-config.json`.
 
 `./verify.sh --cold` repeats it from an empty Gradle home, which catches stale local state. It keeps
-Maven Local, because that is where `plugin-sdk` lives. `./verify.sh --examples` also verifies
-everything under `examples/`, if you kept it.
+Maven Local, because that is where `plugin-sdk` lives.
 
 Output lands in `plugin/build/outputs/plugin-bundle/`.
 
 ### 5. Try it against real data, without the host
+
+Press **Play** in Android Studio — the `app` run configuration — or from a terminal:
 
 ```bash
 ./gradlew :app:installDebug
 ```
 
 `app/` is a development harness: it instantiates `D2`, signs in with the credentials from step 3,
-downloads metadata and then tracker data, and renders your plugin's real entry point inside a
-reproduction of the host's Koin container. It finds that entry point the way the host does —
+downloads metadata, resolves the slot your `plugin.json` declares, and renders your plugin's real
+entry point inside a reproduction of the host's Koin container. It finds that entry point the way the host does —
 `Class.forName` on the name in `plugin.json` — so a wrong class name or a missing no-argument
 constructor fails here, on your laptop, rather than on a device. The first run takes several minutes; every step is named
 on screen, so a slow run is distinguishable from a stuck one. Afterwards the database is on the
@@ -152,9 +155,10 @@ redirect instead of the zip, which on the device looks exactly like the plugin s
 
 ### 7. Post the config to the server dataStore
 
-The `plugin-config.json` beside the bundle already has `version`, `checksum`, `id`, `entryPoint` and
-a `downloadUrl` pointing at `http://10.0.2.2:8081/…` — change the URL only for a physical device or
-another port. The dataStore is the only source of plugin configuration; there is no in-app fallback.
+The `plugin-config.json` beside the bundle already has `version`, `checksum`, `id` and `entryPoint`
+filled in. Its `downloadUrl` is a guess — the Gradle plugin writes one assuming an emulator reaching
+a static server on your own machine — so point it at wherever you actually served the zip. The
+dataStore is the only source of plugin configuration; there is no in-app fallback.
 
 ```bash
 curl -u admin:district -X POST \
@@ -173,8 +177,10 @@ In your **Capture App** checkout:
 ./gradlew :app:installDhis2Debug
 ```
 
-Log in against the same server. Plugins load when the home screen opens, and the card renders above
-the programme list.
+Log in against the same server. Where the plugin appears is the slot its config names: at
+`HOME_ABOVE_PROGRAM_LIST` it loads with the home screen and renders above the programme list; at
+`DATA_SET_INSTANCE_CONTENT` it replaces the body of the data set instance screen, for the data sets
+`slotConfig` lists, and nowhere else.
 
 ## Troubleshooting
 
@@ -211,7 +217,5 @@ this before you post the config; `./verify.sh` runs it.
 - [`specs/README.md`](specs/README.md) — the spec format, and why logic and device scenarios are
   kept apart. Start from [`specs/TEMPLATE.md`](specs/TEMPLATE.md), and build what you write with
   [`docs/workflows/plugin-from-spec.md`](docs/workflows/plugin-from-spec.md).
-- [`examples/program-summary/`](examples/program-summary) — a complete worked plugin with its spec
-  beside it: a tracker programme's enrolment and event counts, and a few enrolled people labelled the
-  way the Capture App labels them. `./init.sh` deletes `examples/`; pass `--keep-examples` to keep
-  it, and set `harness.module` to run it.
+- **Host slots** in [`AGENTS.md`](AGENTS.md) — the two places a plugin can render, how they differ,
+  and how `plugin.json` decides which one you land on.

@@ -24,14 +24,18 @@ Then:
 1. **`plugin.json` is the single source of truth for this plugin's identity.** The Gradle build
    reads it in `settings.gradle.kts`; `tools/check-rules.py` and `tools/check-identity.py` read it
    through `tools/identity.py`. **Do not repeat the package, the id or the entry point anywhere
-   else**, and do not hand-edit it: `./init.sh --force` renames a fork. `tools/check-identity.py`
-   fails the build when the file and the tree disagree, which matters because nothing else can see
-   that failure — the build stays green, the bundle is signed, and the host fails at load with
-   `ClassNotFoundException`.
+   else**, and do not hand-edit *those*: `./init.sh --force` renames a fork.
+   `tools/check-identity.py` fails the build when the file and the tree disagree, which matters
+   because nothing else can see that failure — the build stays green, the bundle is signed, and the
+   host fails at load with `ClassNotFoundException`.
+
+   `injectionPoints` and `slotConfig` are the opposite case and **are** yours to edit. Nothing in
+   the tree mirrors them, so nothing can disagree with them; they are how you say which host slot
+   this plugin renders in, and `./init.sh` carries whatever they say through the rename rather than
+   overwriting it. See *Host slots*.
 2. **Specs live in `specs/`.** One file per feature, Given/When/Then. `specs/README.md` defines the
-   format, `specs/TEMPLATE.md` is the skeleton, and `specs/first-card.md` is the seed's own spec —
-   two scenarios, meant to be replaced. A complete worked example, with its implementation beside
-   it, is `examples/program-summary/`.
+   format, `specs/TEMPLATE.md` is the skeleton, and `specs/first-card.md` and
+   `specs/data-set-body.md` are the seed's own — one per host slot, both meant to be replaced.
 3. **Build a feature from a spec** by following `docs/workflows/plugin-from-spec.md`. It restates
    the spec and stops for approval before writing code, then goes red → green → verified. It is
    plain prose: follow it by hand, or hand it to any agent. In Claude Code it is also
@@ -41,7 +45,7 @@ Then:
    dataStore config. The spec gate is what makes "a spec is the contract" true rather than
    aspirational: every `@L*` scenario must be claimed by a test comment `spec: <slug> <id>`, and
    `tools/check-specs.py` fails the run when one is not. See `specs/README.md` for the convention.
-   `--examples` additionally verifies everything under `examples/`. `--cold` re-resolves every
+   `--cold` re-resolves every
    dependency from a fresh Gradle home, which catches stale local state — it keeps Maven Local,
    because that is where `plugin-sdk` lives, and it is not a clean-machine check. `verify.sh` says
    so itself; there is no clean-machine check here.
@@ -71,23 +75,23 @@ your-plugin/
 ├── plugin.json   # Identity: name, package, plugin id, entry point, version, conventions.
 │                 # The build and the gates both read it. Nothing else repeats it.
 ├── init.sh       # One-time setup of a fork. Wraps tools/init-plugin.py.
-├── verify.sh     # The definition of done. --examples to include examples/.
+├── verify.sh     # The definition of done: every gate + tests + the signed bundle.
 ├── specs/        # Feature specifications — the input to docs/workflows/plugin-from-spec.md
 ├── docs/workflows/   # initialise-plugin.md, plugin-from-spec.md. Plain prose, any agent.
 ├── tools/
 │   ├── identity.py        # Reads plugin.json. Shared by every gate below.
 │   ├── check-identity.py  # Does the tree agree with plugin.json? Also init's state detector.
-│   ├── check-specs.py     # Every @L scenario claimed by a test. --module for an example.
+│   ├── check-specs.py     # Every @L scenario claimed by a test.
 │   └── check-rules.py     # This plugin's own architecture rules, from plugin.json's conventions.
-├── examples/     # Extra plugin modules, deleted by ./init.sh. Each self-contained:
-│   └── program-summary/   # build.gradle.kts + plugin.json + src/ + specs/
 ├── app/          # Android application — dev-only harness against a real server. Never shipped.
-│   └── src/main/java/org/dhis2/mobile/plugin/harness/
-│       ├── MainActivity.kt   # loads the entry point by FQCN, exactly as the host does
-│       ├── HarnessSession.kt # D2 + login + metadata and tracker sync, each step named on screen
-│       ├── HarnessPluginContext.kt   # a real Dhis2PluginContext, identity from BuildConfig
-│       ├── HarnessPluginHost.kt      # PluginHost — reproduces the host's private Koin container
-│       └── ui/theme/         # Studio template theme
+│   ├── src/main/java/org/dhis2/mobile/plugin/harness/
+│   │   ├── MainActivity.kt   # loads the entry point by FQCN, exactly as the host does
+│   │   ├── HarnessSession.kt # D2 + login + metadata + slot resolution, each step named on screen
+│   │   ├── HarnessSlot.kt    # which slot, and its arguments — from plugin.json, not a constant
+│   │   ├── HarnessPluginContext.kt   # a real Dhis2PluginContext, all of it from BuildConfig
+│   │   ├── HarnessPluginHost.kt      # PluginHost — reproduces the host's private Koin container
+│   │   └── ui/theme/         # Studio template theme
+│   └── src/test/             # the harness's own pure logic — slot choice, and nothing past it
 │             # Its Kotlin package is frozen and template-owned; only applicationId follows the
 │             # fork, so two forks' harnesses coexist on one device. Uses CMP 1.10.3 (the same
 │             # Compose version as the plugin modules and the Capture App). A stagePluginAssets
@@ -101,30 +105,32 @@ your-plugin/
     ├── src/androidHostTest/  # Tests of androidMain's top-level mapping and error translation,
     │                         # built from real SDK values. Also JVM — see Architecture.
     └── src/androidMain/kotlin/…/
-        ├── <EntryPoint>.kt   # entry point: provideKoinModule + content, nothing else
+        ├── <EntryPoint>.kt   # entry point: provideKoinModule + content + slotFor, nothing else
+        ├── slots/            # one file per host slot — the default you land on at each
         ├── ui/Previews.kt    # @Previews of the card, beside the card
         └── data/             # D2PluginRepository — the only file that sees the SDK
 ```
 
-Both test source sets run under one Gradle task, `:plugin:testAndroidHostTest`.
+Both of `:plugin`'s test source sets run under one Gradle task, `:plugin:testAndroidHostTest`; the
+harness's own run under `:app:testDebugUnitTest`. `./verify.sh` runs both.
 
-Only `:plugin`'s output is shipped. `:app` is not, and neither is `examples/`.
+Only `:plugin`'s output is shipped. `:app` is the development harness and is not.
 
-**What `:plugin` contains today is a seed** — a small working plugin reading the programme count. It
-exists so `./verify.sh` has something real to check and so the three layers are visible rather than
+**What `:plugin` contains today is a seed** — one small working default per host slot, so that
+whichever slot your `plugin.json` declares, you land on something that renders and reads. It exists
+so `./verify.sh` has something real to check and so the three layers are visible rather than
 described. Replace it; it is meant to be deleted.
 
-**Which plugin the harness renders** is `harness.module` in `local.properties`, default `:plugin`.
-`MainActivity` loads the entry point by name, so switching it needs no code change — and that
-reflective load is the only check of the entry-point contract that does not need a device.
+**One plugin per fork.** There is one `plugin.json`, one `:plugin`, one set of specs. `MainActivity`
+still loads the entry point reflectively, by the name `plugin.json` gives — that reflective load is
+the only check of the entry-point contract that does not need a device, and it is worth keeping for
+that alone.
 
-**Examples in `examples/`, experiments on a branch.** An example belongs in-tree when it compiles
-against the same `plugin-sdk` as everything else: it is then verified by `./verify.sh --examples` on
-every run, and a change to the harness and to the example exercising it land in one commit. An
-experiment against a *different* SDK — `poc/scoped-sdk` here, which targets the Capture App's
-`poc/plugin-system-scopedSDK` — cannot be a module in this build at all, so it stays a branch. Be
-aware of what that costs: `poc/scoped-sdk` renamed its package by hand and quietly lost `specs/`,
-`tools/` and `verify.sh` doing it. Rebase such a branch onto `main` rather than letting it drift.
+**Experiments go on a branch.** An experiment against a *different* `plugin-sdk` — `poc/scoped-sdk`
+here, which targets the Capture App's `poc/plugin-system-scopedSDK` — cannot be a module in this
+build at all. Be aware of what that costs: `poc/scoped-sdk` renamed its package by hand and quietly
+lost `specs/`, `tools/` and `verify.sh` doing it. Rebase such a branch onto `main` rather than
+letting it drift.
 
 ## Architecture
 
@@ -171,21 +177,24 @@ anything was looking, which is why the distinction is written down rather than a
    `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
    real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
    it is the faster loop for pure UI work.
-3. **[checked]** **Stay short.** The host renders the slot in a non-scrolling `Column` above its own program list,
-   so height taken here is height taken from the host and anything past the viewport is unreachable.
-   `PluginCard` caps itself with `heightIn(max = …)` + `verticalScroll`.
+3. **[checked]** **Stay short — at an additive slot.** At `HOME_ABOVE_PROGRAM_LIST` the host renders
+   the plugin in a non-scrolling `Column` above its own program list, so height taken there is height
+   taken from the host and anything past the viewport is unreachable. `PluginCard` caps itself with
+   `heightIn(max = …)` + `verticalScroll`, and `conventions.boundedComposables` is what checks it.
+   **A replacement slot is the opposite** — it owns the region it was given, so filling it is correct
+   and scrolling is the plugin's job. `DataSetBodyPlaceholder` deliberately caps nothing and is
+   deliberately absent from that list. See *Host slots*.
 4. **[checked]** A repository returns `Result`, never throws. An exception escaping into the host composition takes
    the enclosing screen with it, and Compose cannot express an error boundary around a composable
    call. This means catching `Throwable`, not just `D2Error` — see `io()` and `catchingD2` in
    `D2PluginRepository.kt` (`io()` is private; `catchingD2` is the top-level one the tests reach).
    A repository that only catches the SDK's own error type still lets an unexpected null while
    mapping a result reach the host.
-5. **[build, in part]** **Count in SQL; materialise only what you show.** The one shape a grep
-   *can* settle is checked — enriching with `.with…()` and then capping with `take(` — by the
-   build's `cap-before-enrichment` rule. The rest is judgement. `blockingCount()` is a `COUNT(*)`;
-   `blockingGet()` materialises rows. A model carrying a total beside a capped list is the shape
-   this produces — the worked example in `examples/program-summary/` does exactly that. The SDK has no synchronous row limit — `blockingGet`, `blockingCount`, and a LiveData-based
-   `getPaged` — so `take(n)` after a `blockingGet` is as good as it gets for the rows.
+5. **[build, in part]** **Count in SQL; materialise only what you show.** `blockingCount()` is a
+   `COUNT(*)`; `blockingGet()` materialises rows, and `.one()` is a `LIMIT 1`. Enriching with
+   `.with…()` and then capping with `take(` is the one shape a grep can settle, and the build's
+   `cap-before-enrichment` rule settles it; the rest is judgement. The SDK has no synchronous row
+   limit, so `take(n)` after a `blockingGet` is as good as it gets for the rows.
 6. **[prose]** `D2Error` carries no `message`. It is `data class D2Error(…) : Exception()` and passes nothing to
    the `Exception` constructor, so `Throwable.message` is **always null** — read `errorCode()` and
    `errorDescription()`, or every failure renders as the bare word "D2Error".
@@ -195,12 +204,10 @@ anything was looking, which is why the distinction is written down rather than a
 ```bash
 ./init.sh                              # one-time setup of a fork. --check, --dry-run, --force
 ./verify.sh                            # every gate + tests + bundle — the definition of done
-./verify.sh --examples                 # also verify everything under examples/
 ./verify.sh --cold                     # same, from a fresh Gradle home (Maven Local kept)
 
 python3 tools/check-identity.py        # does the tree agree with plugin.json? (fast)
 python3 tools/check-specs.py           # the spec ↔ test gate alone (fast)
-python3 tools/check-specs.py --module examples/program-summary    # the same, for an example
 python3 tools/check-rules.py           # this plugin's own rules, marked [checked] below (fast)
 ./gradlew :plugin:checkPluginConventions   # the plugin system's rules, marked [build] below
 ./gradlew checkHostAlignment           # Compose + DHIS2 SDK match what the host provides
@@ -342,6 +349,66 @@ Runtime resolution differs by host:
   registers the directory via AGP 9's Variant Sources API. CMP's default
   Android reader then finds them via `context.assets.open(…)`.
 
+## Host slots
+
+A slot is a place in the Capture App where a plugin's UI is rendered. `plugin-sdk` defines two, and
+they behave in opposite ways — most of what is true of one is false of the other.
+
+| | `HOME_ABOVE_PROGRAM_LIST` | `DATA_SET_INSTANCE_CONTENT` |
+|---|---|---|
+| Kind | Additive | Replacement |
+| Where | Home screen, above the programme list | The body of the data set instance screen |
+| Who else renders | Every registered plugin, one after another | Exactly one plugin wins |
+| Height | The host's, and it does not scroll — **cap yours** | Yours; **fill it, and scroll inside it** |
+| `LocalSlotContentPadding` | Zero; nothing floats over it | The save button's; **apply it** |
+| `LocalSlotArguments` | `null` — the slot is the whole screen | `DataSetInstanceSlotArguments` |
+| Needs configuration | No | Yes — `slotConfig.DATA_SET_INSTANCE_CONTENT.dataSetUids` |
+
+**Where a slot is declared.** `plugin.json`'s `injectionPoints`, and for a replacement,
+`slotConfig`:
+
+```json
+"injectionPoints": ["DATA_SET_INSTANCE_CONTENT"],
+"slotConfig": {
+  "DATA_SET_INSTANCE_CONTENT": {
+    "dataSetUids": ["BfMAe6Itzgt"]
+  }
+}
+```
+
+That is the whole change — no Kotlin, nothing in `local.properties`. Rebuild and the harness renders
+that slot, resolving the period, organisation unit and attribute option combo itself. Declare both
+slots and it picks the replacement.
+
+Both fields reach the generated `plugin-config.json`, which an administrator posts to the server
+dataStore — and the dataStore is what the host actually reads. The plugin's *Kotlin* declares none
+of it (see the entry-point contract), and neither file may be a second copy of the other.
+
+**An empty `dataSetUids` is a kill switch, not a bug.** A replacement renders nowhere until it says
+which objects it applies to, so emptying the list switches the plugin off without deleting its
+dataStore entry. `tools/check-identity.py` says so out loud rather than failing, because on a device
+the symptom — the host's own screen, unchanged — looks exactly like the plugin failing to load.
+
+**Where a slot is *rendered*.** One file each, under `plugin/src/androidMain/kotlin/…/slots/`.
+`MyPlugin.content()` reads `LocalSlotArguments`, passes it to `slotFor`, and delegates. Adding a
+slot is adding a file; a slot your plugin does not declare is an unused file you can delete once you
+are sure, not a branch you have to read past. Those files take a `Dhis2PluginContext`, which
+architecture rule 2 forbids for composables — they are the entry point's own layer split up, not UI,
+and the composables *they* call still obey the rule.
+
+**Which slot the harness renders.** Not a constant anyone edits: `HarnessSlot.kt` derives it from
+the same `plugin.json` the dataStore config came from, so the two cannot disagree. The rule is the
+most specific slot the plugin could actually be rendered at — a replacement wins when it is declared
+*and* configured, because an unconfigured one replaces nothing. A fork that declares both and wants
+to look at the other one edits `plugin.json`, which is the same edit that would change what a device
+renders.
+
+**What the harness resolves for you.** A replacement needs four identifiers, and the harness finds
+them from the data set UID `plugin.json` names — preferring a data set instance that really exists,
+and otherwise assembling the coordinates from metadata. Every way that can fail is a named failure
+on screen naming the UID and what to change, because an empty screen and a broken plugin look
+identical.
+
 ## Development harness
 
 `:app` signs in to a real DHIS2 and renders the real plugin against real data — no hand-written
@@ -349,33 +416,17 @@ samples. Configure it in `local.properties`, which is gitignored and never commi
 
 ```properties
 sdk.dir=<your Android SDK>               # required by :plugin's build-tools pin, not just by AGP
-dhis2.serverUrl=<your server>            # from an emulator, 10.0.2.2 is the host machine
+dhis2.serverUrl=<your server>
 dhis2.username=<your username>
 dhis2.password=<your password>
-dhis2.programUid=                        # optional; blank picks the first tracker programme
 ```
 
-`dhis2.programUid` selects what the **harness downloads**. Leave it blank and the harness picks the
-first tracker programme ordered by name, which is exactly how `D2PluginRepository` resolves the one
-it reports on — so the two agree by default. Name a different programme and they will not; that is
-the one case `MainActivity`'s on-screen note is about.
+Use a development server: the harness logs in as a real user and syncs a real database onto the
+device, which is not something to point at production.
 
-Use a development server. The plugin reads only — but the harness logs in as a real user and syncs
-a real database onto the device, which is not something to point at production.
-
-Then `./gradlew :app:installDebug`. On first run it instantiates `D2`, logs in and downloads
-metadata. Whether it goes on to download **tracker data** is the hosted module's call, declared in
-its `plugin.json`:
-
-```json
-"harness": { "trackerData": true }
-```
-
-Set it for a plugin that reads enrolments, events or tracked entities — metadata alone brings
-programmes and stages but no rows, and such a plugin rendering real structure over zero rows looks
-like a plugin bug. Leave it out otherwise: the download takes minutes, and a plugin counting
-programmes gains nothing from it but the wait and a line on screen naming a programme it never reads.
-The seed leaves it out; `examples/program-summary` sets it.
+Then `./gradlew :app:installDebug`. It instantiates `D2`, logs in, downloads metadata, and resolves
+the slot to render — and it downloads **metadata only**. A plugin that reads rows of data will see
+none until you add the download it needs; the harness deliberately does not guess which that is.
 
 That first run takes minutes; afterwards the database is on the device and startup is immediate.
 Every step is named on screen, so a slow run is distinguishable from a stuck one.
@@ -388,7 +439,7 @@ than on a device.
 
 **What it cannot tell you.** It is not the Capture App, and these need the real host:
 
-- the non-scrolling slot and the height budget
+- the additive slot's non-scrolling column and its height budget
 - the class-loader reload and its `ClassCastException`
 - Compose resource resolution through `FileSystemResourceReader`
 - that plugin bindings cannot leak into the host's container
@@ -419,10 +470,10 @@ So the harness shrinks the device checklist; it does not empty it.
    Not 8080: a local DHIS2 instance usually owns it and answers with its login redirect
    instead of the bundle, which reads on device as the plugin silently not loading.
 4. Post that JSON to the DHIS2 server dataStore (`dhis2AndroidPlugins/config`) — POST
-   creates the key, PUT updates it afterwards. It points the app at
-   `http://10.0.2.2:8081/plugin-{version}.zip` (the bundle is named from the Gradle
-   module, not from the config's `id`). The dataStore is the only source of plugin
-   config; there is no in-app fallback. There is no data-scope field to set — the plugin gets the
+   creates the key, PUT updates it afterwards. Its `downloadUrl` is a guess the Gradle
+   plugin writes, so point it at wherever you served the zip; note the bundle is named
+   `plugin-{version}.zip` from the Gradle module, not from the config's `id`. The
+   dataStore is the only source of plugin config; there is no in-app fallback. There is no data-scope field to set — the plugin gets the
    SDK unrestricted, so the config only names *which* code to run.
 5. Install the Capture App and log in: `./gradlew :app:installDhis2Debug` in that checkout, which
    installs as `com.dhis2.debug`. Plugins load when the home screen opens.
@@ -451,11 +502,9 @@ The entry point — the class `plugin.json` names — must:
   `pluginBundle.entryPoint`, and nothing in Gradle checks the class exists; `tools/check-identity.py`
   covers this repository only. `BuildPluginBundleTask` already has a `ClassesJarInspector`, so it
   could assert the entry point is present in the DEX for *every* plugin project.
-- **Give `PluginBundleExtension` an `injectionPoints` property.** `DataStoreSnippet` currently
-  hardcodes `["HOME_ABOVE_PROGRAM_LIST"]` into the generated `plugin-config.json`, so a plugin
-  targeting a future slot could not say so. `plugin.json` has the field and
-  `tools/check-identity.py` rejects any other value rather than let it lie — but that is a guard
-  around a gap, not a fix for it.
+- **`LocalHostRefresh` is defined and unused.** `plugin-sdk` provides it; nothing here provides or
+  consumes it. A replacement slot that *writes* values has no way to tell the host to re-read before
+  its save button validates, so this becomes a real gap the moment a plugin does more than display.
 - **Reach for design-system *components*, not only its tokens.** The seed uses `SurfaceColor`,
   `TextColor`, `Spacing` and `Radius` with a plain Material 3 `Card`. `BaseCard`, `ListCard`,
   `Button`, `Badge` and `InfoBar` exist in `…designsystem.component` and would be closer to the
