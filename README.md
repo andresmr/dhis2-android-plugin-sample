@@ -97,19 +97,14 @@ sdk.dir=/Users/you/Library/Android/sdk
 dhis2.serverUrl=https://play.dhis2.org/dev
 dhis2.username=admin
 dhis2.password=district
-
-# Optional. Which slot to render, when plugin.json declares more than one. Blank picks the most
-# specific slot the plugin could actually be rendered at.
-# harness.slot=HOME_ABOVE_PROGRAM_LIST
 ```
 
 **Use a development server.** A plugin only reads, but the harness signs in as a real user and syncs
 a real database onto the device.
 
 Which slot the harness renders comes from `plugin.json`'s `injectionPoints` — the same field that
-reaches the dataStore config — so the harness and a device cannot disagree about it. `harness.slot`
-only overrides *which* of several declared slots you are working on, and naming one `plugin.json`
-does not declare is refused. See *Host slots* in [`AGENTS.md`](AGENTS.md).
+reaches the dataStore config — so the harness and a device cannot disagree about it. See *Host
+slots* in [`AGENTS.md`](AGENTS.md).
 
 ### 4. Build and verify
 

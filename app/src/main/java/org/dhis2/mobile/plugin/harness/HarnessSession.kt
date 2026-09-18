@@ -44,8 +44,8 @@ class HarnessSession(private val context: Context) {
         val missing = missingCredentials()
         if (missing.isNotEmpty()) return@withContext HarnessState.NotConfigured(missing)
 
-        // Before the SDK, deliberately: this reads nothing but BuildConfig, and a typo in
-        // harness.slot should fail in a second rather than after a first-run metadata download.
+        // Before the SDK, deliberately: this reads nothing but BuildConfig, so a plugin.json that
+        // names no renderable slot fails in a second, not after a first-run metadata download.
         onStep(CHOOSING_SLOT)
         val slot = when (val choice = harnessSlotChoice()) {
             is SlotChoice.Unavailable ->
@@ -107,11 +107,10 @@ class HarnessSession(private val context: Context) {
         HarnessState.Ready(d2, slot, arguments)
     }
 
-    /** The slot `plugin.json` names, overridable by `harness.slot` in `local.properties`. */
+    /** The slot `plugin.json` names. */
     private fun harnessSlotChoice(): SlotChoice = chooseSlot(
         declared = harnessInjectionPoints(),
         dataSetUids = harnessDataSetUids(),
-        override = BuildConfig.HARNESS_SLOT,
     )
 
     private fun missingCredentials(): List<String> = buildList {

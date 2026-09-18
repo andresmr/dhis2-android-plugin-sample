@@ -22,7 +22,7 @@ class ChooseSlotTest {
     // spec: data-set-body L3
     @Test
     fun `prefer the configured replacement over the additive slot`() {
-        val choice = chooseSlot(declared = both, dataSetUids = listOf("BfMAe6Itzgt"), override = "")
+        val choice = chooseSlot(declared = both, dataSetUids = listOf("BfMAe6Itzgt"))
 
         assertEquals(
             SlotChoice.Chosen(InjectionPoint.DATA_SET_INSTANCE_CONTENT, "BfMAe6Itzgt"),
@@ -33,49 +33,17 @@ class ChooseSlotTest {
     // spec: data-set-body L4
     @Test
     fun `fall back to the additive slot when the replacement has no UIDs`() {
-        val choice = chooseSlot(declared = both, dataSetUids = emptyList(), override = "")
+        val choice = chooseSlot(declared = both, dataSetUids = emptyList())
 
         assertEquals(
             SlotChoice.Chosen(InjectionPoint.HOME_ABOVE_PROGRAM_LIST, null),
             choice,
-        )
-    }
-
-    // spec: data-set-body L5
-    @Test
-    fun `refuse an override naming a slot the plugin does not declare`() {
-        val choice = chooseSlot(
-            declared = listOf(InjectionPoint.HOME_ABOVE_PROGRAM_LIST),
-            dataSetUids = emptyList(),
-            override = "DATA_SET_INSTANCE_CONTENT",
-        )
-
-        val unavailable = choice as SlotChoice.Unavailable
-        assertTrue(
-            unavailable.reason.contains("HOME_ABOVE_PROGRAM_LIST"),
-            "the reason should name what *is* declared, or it says nothing actionable: " +
-                unavailable.reason,
-        )
-    }
-
-    @Test
-    fun `honour an override the plugin does declare`() {
-        val choice = chooseSlot(
-            declared = both,
-            dataSetUids = listOf("BfMAe6Itzgt"),
-            override = " home_above_program_list ",
-        )
-
-        assertEquals(
-            SlotChoice.Chosen(InjectionPoint.HOME_ABOVE_PROGRAM_LIST, null),
-            choice,
-            "harness.slot is hand-typed in local.properties, so it is trimmed and case-insensitive",
         )
     }
 
     @Test
     fun `report no slot at all rather than guessing`() {
-        val choice = chooseSlot(declared = emptyList(), dataSetUids = emptyList(), override = "")
+        val choice = chooseSlot(declared = emptyList(), dataSetUids = emptyList())
 
         assertTrue(choice is SlotChoice.Unavailable)
     }

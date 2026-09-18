@@ -139,10 +139,6 @@ android {
         // answers what it would answer on a device.
         buildConfigField("String", "PLUGIN_INJECTION_POINTS", "\"$dhis2InjectionPoints\"")
         buildConfigField("String", "PLUGIN_SLOT_CONFIG", quote(dhis2SlotConfigJson))
-
-        // Optional override for which slot to render, when plugin.json declares more than one.
-        // local.properties, because which slot *you* are working on is not a property of the plugin.
-        buildConfigField("String", "HARNESS_SLOT", "\"${harnessProperty("harness.slot")}\"")
     }
 
     buildFeatures {

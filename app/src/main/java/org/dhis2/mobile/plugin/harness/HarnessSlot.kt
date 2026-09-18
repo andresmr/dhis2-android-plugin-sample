@@ -31,50 +31,25 @@ sealed interface SlotResolution {
 }
 
 /**
- * Picks the slot, from `plugin.json` and an optional `local.properties` override.
+ * Picks the slot, from `plugin.json` alone.
  *
- * Deliberately pure — no `D2`. It runs before the SDK is even instantiated, so a typo in
- * `harness.slot` fails in a second rather than after a five-minute first-run metadata download.
+ * Deliberately pure — no `D2`. It runs before the SDK is even instantiated, so a misconfigured
+ * slot fails in a second rather than after a five-minute first-run metadata download.
  *
- * The rule: the override if there is one; otherwise the most specific slot the plugin could
- * actually be rendered at. A replacement wins when it is declared *and* configured, because a
- * replacement with an empty `dataSetUids` replaces nothing — that is the host's rule too
- * (`InjectionPoint.requiresConfiguration`), and a harness that rendered it anyway would be showing
- * you something the Capture App never would.
+ * The rule: the most specific slot the plugin could actually be rendered at. A replacement wins
+ * when it is declared *and* configured, because a replacement with an empty `dataSetUids` replaces
+ * nothing — that is the host's rule too (`InjectionPoint.requiresConfiguration`), and a harness
+ * that rendered it anyway would be showing you something the Capture App never would.
  */
 fun chooseSlot(
     declared: List<InjectionPoint>,
     dataSetUids: List<String>,
-    override: String,
 ): SlotChoice {
     if (declared.isEmpty()) {
         return SlotChoice.Unavailable(
             "plugin.json declares no injectionPoints, so there is no slot to render at. Add at " +
                 "least one of ${InjectionPoint.entries.joinToString { it.name }}.",
         )
-    }
-
-    val requested = override.trim()
-    if (requested.isNotEmpty()) {
-        val point = InjectionPoint.entries.find { it.name.equals(requested, ignoreCase = true) }
-            ?: return SlotChoice.Unavailable(
-                "local.properties sets harness.slot=$requested, which is not a slot plugin-sdk " +
-                    "defines. Known slots: ${InjectionPoint.entries.joinToString { it.name }}.",
-            )
-        if (point !in declared) {
-            return SlotChoice.Unavailable(
-                "local.properties sets harness.slot=${point.name}, but plugin.json does not " +
-                    "declare it. The host only renders a plugin at slots its config names, so " +
-                    "this would show you something a device never would. Declared: " +
-                    declared.joinToString { it.name } + ".",
-            )
-        }
-        return chosenAt(point, dataSetUids)
-            ?: SlotChoice.Unavailable(
-                "harness.slot=${point.name} is declared, but slotConfig." +
-                    "${point.name}.dataSetUids is empty, so it replaces nothing. Add the UID of " +
-                    "a data set on your server.",
-            )
     }
 
     return declared

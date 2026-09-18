@@ -398,16 +398,10 @@ and the composables *they* call still obey the rule.
 
 **Which slot the harness renders.** Not a constant anyone edits: `HarnessSlot.kt` derives it from
 the same `plugin.json` the dataStore config came from, so the two cannot disagree. The rule is the
-override if there is one, else the most specific slot the plugin could actually be rendered at — a
-replacement wins when it is declared *and* configured, because an unconfigured one replaces nothing.
-To work on the other slot, set `harness.slot` in `local.properties`:
-
-```properties
-harness.slot=HOME_ABOVE_PROGRAM_LIST
-```
-
-Naming a slot `plugin.json` does not declare is refused, on screen: rendering there would show you
-something a device never would.
+most specific slot the plugin could actually be rendered at — a replacement wins when it is declared
+*and* configured, because an unconfigured one replaces nothing. A fork that declares both and wants
+to look at the other one edits `plugin.json`, which is the same edit that would change what a device
+renders.
 
 **What the harness resolves for you.** A replacement needs four identifiers, and the harness finds
 them from the data set UID `plugin.json` names — preferring a data set instance that really exists,
@@ -429,9 +423,6 @@ dhis2.password=<your password>
 
 Use a development server: the harness logs in as a real user and syncs a real database onto the
 device, which is not something to point at production.
-
-There is one more key, `harness.slot`, and it belongs to *Host slots* above — it only matters when
-`plugin.json` declares more than one.
 
 Then `./gradlew :app:installDebug`. It instantiates `D2`, logs in, downloads metadata, and resolves
 the slot to render — and it downloads **metadata only**. A plugin that reads rows of data will see

@@ -113,13 +113,10 @@ sdk.dir=/Users/you/Library/Android/sdk
 dhis2.serverUrl=<your server>
 dhis2.username=<your username>
 dhis2.password=<your password>
-
-# Optional: only when plugin.json declares more than one slot and you want the other one.
-# harness.slot=HOME_ABOVE_PROGRAM_LIST
 ```
 
-**Use a development server.** The plugin only reads, but the harness signs in as a real user and
-syncs a real database onto the device.
+**Use a development server.** The harness signs in as a real user and syncs a real database onto
+the device.
 
 Then:
 

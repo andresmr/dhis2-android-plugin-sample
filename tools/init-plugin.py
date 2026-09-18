@@ -566,10 +566,6 @@ sdk.dir=/Users/you/Library/Android/sdk
 dhis2.serverUrl=https://play.dhis2.org/dev
 dhis2.username=admin
 dhis2.password=district
-
-# Optional. Which slot to render, when plugin.json declares more than one. Blank picks the most
-# specific slot the plugin could actually be rendered at.
-# harness.slot=HOME_ABOVE_PROGRAM_LIST
 """
 
 

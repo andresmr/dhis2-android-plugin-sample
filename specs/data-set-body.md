@@ -41,12 +41,6 @@ When the harness picks the slot to render
 Then it picks the home slot, because a replacement with no UIDs replaces nothing — the same rule the
 host applies
 
-@L5
-Given an override naming a slot the plugin does not declare
-When the harness picks the slot to render
-Then it reports the slot as unavailable, naming the slots that are declared, rather than rendering
-somewhere a device never would
-
 ## Device scenarios
 
 @D1
