@@ -1,8 +1,9 @@
 # AGENTS.md — DHIS2 Android plugin template
 
 **This is the working reference for this repository, whichever agent or person is reading it.**
-`CLAUDE.md`, `.cursorrules` and `.github/copilot-instructions.md` are one-line pointers here; there
-is one copy, so there is nothing to drift.
+`CLAUDE.md`, `.cursorrules` and `.github/copilot-instructions.md` exist only because each tool
+looks for its own filename. They point here and hold no instructions of their own, so there is one
+copy of the rules and nothing to drift.
 
 A **template** for building plugins for the DHIS2 Android Capture App. A plugin is a small Android
 library implementing `Dhis2Plugin`, packaged as a **signed zip bundle**, rendered inside the Capture
@@ -12,6 +13,19 @@ Everything needed to build, test and package a plugin is here, with one exceptio
 `plugin-sdk-gradle` are not published, so they have to be built into Maven Local from a Capture App
 checkout — branch `poc/plugin-system` — before this project will even *configure*. See *Local
 testing flow* below, and `README.md` for the install path.
+
+### Which document owns which fact
+
+Two repositories document this system, and facts stated in both have already drifted apart once.
+The split:
+
+| Owned by the Capture App's `docs/plugin-system.md` | Owned here |
+| --- | --- |
+| The `plugin-sdk` API, the dataStore contract, the bundle format, the security model, the host/plugin toolchain compatibility table, what each host slot does | The three layers and their rules, the spec pipeline, the development harness, this template's own gates and backlog |
+
+Where a section below restates something from that list, it is a **local summary for convenience**
+and is marked as such. Change the upstream document first, then this one — never the other way
+round. Anything stated only here is this template's own and has no upstream copy.
 
 ## Start here
 
@@ -164,17 +178,27 @@ plugin scattered with `d2.` calls.
 
 **Rules.** Each is marked by what enforces it: **[build]** when `plugin-sdk-gradle`'s
 `checkPluginConventions` does — so every plugin project inherits it and a fork cannot let it rot —
-**[checked]** when this repo's own `tools/check-rules.py` does, and **[prose]** when nothing does. A
-prose rule is a rule you have to remember; three of them had quietly stopped being true before
-anything was looking, which is why the distinction is written down rather than assumed.
+**[checked]** when one of this repo's own gates does (`tools/check-rules.py`, or the
+`checkHostAlignment` task in the root `build.gradle.kts`), **[compiler]** when the build fails on
+its own without anyone having written a check, and **[prose]** when nothing does. A prose rule is a
+rule you have to remember; three of them had quietly stopped being true before anything was
+looking, which is why the distinction is written down rather than assumed.
 
-1. **[build]** Put it in `commonMain` unless it needs a platform API. In practice only the entry
+Re-derive these tags from `PluginConventions.kt` and `tools/check-rules.py` whenever either
+changes. A tag that claims more than the code does is worse than no tag at all.
+
+1. **[prose]** Put it in `commonMain` unless it needs a platform API. In practice only the entry
    point, `D2PluginRepository` and the `@Preview`s belong in `androidMain` — `D2` is the Android SDK
-   and `@Preview` is an Android annotation.
-2. **[build]** Composables take plain data and callbacks — never a `Dhis2PluginContext`. That is what lets
-   `@Preview` render the real UI without a server. The harness no longer needs this — it builds a
-   real context against a real `D2` (see *Development harness*) — but a `@Preview` still does, and
-   it is the faster loop for pure UI work.
+   and `@Preview` is an Android annotation. Nothing checks this direction: `checkPluginConventions`
+   catches the SDK *escaping into* shared source, not a file sitting needlessly in `androidMain`.
+2. **[build, in shared source]** Composables take plain data and callbacks — never a
+   `Dhis2PluginContext`. That is what lets `@Preview` render the real UI without a server. The
+   harness no longer needs this — it builds a real context against a real `D2` (see *Development
+   harness*) — but a `@Preview` still does, and it is the faster loop for pure UI work.
+
+   `checkPluginConventions` only looks at `common*` source sets, so the slot files in `androidMain`
+   are invisible to it. That is deliberate — they are the entry point's own layer split up, not UI
+   — but it does mean nothing stops a real Composable in `androidMain` taking a context.
 3. **[prose]** **Design what your plugin needs; the host decides how much room it gets.** How a slot
    is bounded is the host's business — it is the thing that knows which slot is being rendered and
    what surrounds it. A replacement slot already works this way: it hands the plugin a region and a
@@ -229,13 +253,13 @@ cannot slip past it.
    and `ClassCastException`. **But** `compose.components.resources` must be
    `implementation` — it's the CMP plugin's opt-in signal to generate the `Res`
    accessor class. Swap it to `compileOnly` and `Res.*` imports stop resolving.
-2. **[enforced by the build — it fails at resolution]** **The plugin compiles against the DHIS2 SDK, and `settings.gradle.kts` needs two extra
+2. **[compiler]** **The plugin compiles against the DHIS2 SDK, and `settings.gradle.kts` needs two extra
    repositories for it.** `Dhis2PluginContext.sdk` is `D2`, so the plugin-bundle Gradle plugin
    injects `org.hisp.dhis:android-core` at the host's version — never declare it yourself. It pulls
    `com.github.dhis2:sms-compression` from JitPack, and the host usually tracks SDK snapshots, so
    both JitPack and the snapshots repo must be in `dependencyResolutionManagement`. Without them the
    build fails at dependency *resolution*, with an error that never mentions the DHIS2 SDK.
-3. **[checked]** **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx
+3. **[checked — `checkHostAlignment`, not `check-rules.py`]** **Matching `composeMultiplatform` is not enough.** The host declares CMP *and* androidx
    `compose` separately, depending on the latter directly and at a higher version — 1.10.6 against
    the 1.10.5 CMP resolves. Almost everything is identical, which is the trap: the first casualty is
    a *defaulted* overload whose `…$default` synthetic moved. `Modifier.weight(1f)` crashed the host
@@ -247,20 +271,23 @@ cannot slip past it.
    applying. `material3` is deliberately excluded: androidx's sub-groups do not share one version
    line — material3 is on 1.4.x — so a force across `androidx.compose.*` would be wrong.
 
-   What is still on you: `androidxCompose` in the version catalogue is a **hand-mirrored host fact**,
-   the last one left. `HostToolchain` publishes Kotlin, the CMP version, compileSdk, jvmTarget,
-   `plugin-sdk` and the DHIS2 SDK — but not this. Raising the host's `compose` means raising it here
-   too, and nothing will tell you. Preferring layout APIs without default arguments is still the
-   cheaper habit.
-4. **[enforced by the build — AGP 9 refuses the mix]** **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
+   What is still on you: `androidxCompose` in the version catalogue is a **hand-mirrored host
+   fact**, and not the only one — `designSystem` and `dhis2AndroidCore` are too. `HostToolchain`
+   publishes Kotlin, the CMP version, compileSdk, jvmTarget, `plugin-sdk` and the DHIS2 SDK, but it
+   is `internal`, and it carries no androidx Compose entry at all. `checkHostAlignment` catches
+   drift on the two it can resolve; nothing can *discover* the right androidx value. Raising the
+   host's `compose` means raising it here too, and nothing will tell you. Preferring layout APIs
+   without default arguments is still the cheaper habit.
+4. **[compiler]** **Use `kotlin.multiplatform` + `com.android.kotlin.multiplatform.library`,
    not `com.android.library`.** AGP 9 disallows mixing plain Android library
    with KMP.
 5. **[prose]** **Set `compose.resources { packageOfResClass = "…" }` explicitly.** Without
    it CMP derives the package from the root project name (which has spaces →
    backtick-escaped imports).
 6. **[prose]** **The plugin declares no identity.** Its id, version, entry point and injection points all live
-   in the server dataStore config. `pluginBundle { pluginId; entryPoint }` only fills in the
-   generated `plugin-config.json` for convenience — it reaches neither the bundle nor the host.
+   in the server dataStore config. `pluginBundle { pluginId; entryPoint; injectionPoints;
+   slotConfig; downloadUrlBase }` only fills in the generated `plugin-config.json` for convenience —
+   none of it reaches the bundle or the host.
 7. **[prose]** **A bundle is byte-identical only with the same `build-tools` *and* the same signing key.**
    `plugin/build.gradle.kts` pins `d8Executable`/`apksignerExecutable`, because the bundle plugin
    otherwise takes the newest installed and a different `d8` emits different DEX bytes. With that
@@ -275,12 +302,15 @@ cannot slip past it.
 
    Raising the pin is fine; expect the checksum to move, and every machine that builds this needs
    the `build-tools` version you raise it to.
-8. **[prose]** **Bump the version to invalidate the device cache.** That is the Gradle `version` assignment near
-   the top of `plugin/build.gradle.kts` — there is no `pluginVersion` property, and `pluginBundle { }`
-   does not carry one. The Capture App caches by `{id}-{version}.zip`; rebuilding at the same version
-   reuses the old cache. Symptom: "my code changes aren't showing."
+8. **[prose]** **Bump the version to invalidate the device cache.** That is `version` in
+   `plugin.json`; `plugin/build.gradle.kts` reads it from there (`version = dhis2PluginVersion`) and
+   `pluginBundle { }` does not carry one. The Capture App caches by `{id}-{version}.zip`; rebuilding
+   at the same version reuses the old cache. Symptom: "my code changes aren't showing."
 
 ## Design system
+
+> Local. The design system is not part of the plugin API; this is how *this* template uses it.
+
 
 **Adopted.** `org.hisp.dhis.mobile:designsystem` is declared `compileOnly` in the plugin modules and
 as a real dependency in the harness, the seed's `PluginCard` draws every colour, space, corner and
@@ -347,6 +377,10 @@ Runtime resolution differs by host:
   Android reader then finds them via `context.assets.open(…)`.
 
 ## Host slots
+
+> Local summary. `plugin-sdk` defines these and `docs/plugin-system.md` §3 owns them; if the two
+> disagree, upstream is right. Kept here because it is what you need while writing the plugin.
+
 
 A slot is a place in the Capture App where a plugin's UI is rendered. `plugin-sdk` defines two, and
 they behave in opposite ways — most of what is true of one is false of the other.
@@ -460,9 +494,11 @@ So the harness shrinks the device checklist; it does not empty it.
    `plugin-sdk-gradle` is invisible from this side — it surfaces as an unrelated
    dependency-resolution error. Republish after any change to the plugin API, and remember a
    changed API under an unchanged version leaves a stale copy in `~/.m2`.
-2. `./verify.sh`, or `./gradlew :plugin:buildPluginBundle` directly. `plugin-config.json` beside the bundle is
-   the dataStore entry with `version`, `checksum`, `id` and `entryPoint` already filled
-   in — the last two come from `pluginBundle { }` in `plugin/build.gradle.kts`.
+2. `./verify.sh`, or `./gradlew :plugin:buildPluginBundle` directly. `plugin-config.json` beside the
+   bundle is the dataStore entry: `version` and `checksum` the build knows, and `id`, `entryPoint`,
+   `downloadUrl`, `injectionPoints` and `slotConfig` come from `pluginBundle { }` in
+   `plugin/build.gradle.kts`, which reads them from `plugin.json`. Check `downloadUrl` before
+   posting — it defaults to the emulator's route to your own machine.
 3. `cd plugin/build/outputs/plugin-bundle && python3 -m http.server 8081`.
    Not 8080: a local DHIS2 instance usually owns it and answers with its login redirect
    instead of the bundle, which reads on device as the plugin silently not loading.
@@ -484,6 +520,9 @@ harness*).
 
 ## Entry-point contract
 
+> Local summary of the `Dhis2Plugin` contract, which `docs/plugin-system.md` §3 owns.
+
+
 The entry point — the class `plugin.json` names — must:
 
 - Implement `org.dhis2.mobile.plugin.sdk.Dhis2Plugin`.
@@ -497,7 +536,10 @@ The entry point — the class `plugin.json` names — must:
 
 - **A way to pull template improvements into an existing fork.** `git remote add template …` plus a
   documented merge, probably. Only becomes a real need once someone has forked and the template has
-  moved on, but that is exactly when it is too late to design.
+  moved on, but that is exactly when it is too late to design. `plugin.json`'s `template` block used
+  to carry a `source` naming the upstream repository for exactly this; it was removed because
+  nothing read it and it named a repository that does not exist. Add it back when the feature is
+  built, with whatever the real upstream path turns out to be.
 - **Teach `plugin-sdk-gradle` to verify the entry point.** `plugin.json` drives
   `pluginBundle.entryPoint`, and nothing in Gradle checks the class exists; `tools/check-identity.py`
   covers this repository only. `BuildPluginBundleTask` already has a `ClassesJarInspector`, so it
@@ -510,12 +552,13 @@ The entry point — the class `plugin.json` names — must:
   `Button`, `Badge` and `InfoBar` exist in `…designsystem.component` and would be closer to the
   host still; `BaseCard` takes nine parameters and several defaults, so it is worth doing
   deliberately rather than by reflex (build rule 3).
-- **Move the last two local rules upstream, or accept that they stay local.** `tools/check-rules.py`
-  still checks that `PluginRepository` returns `Result` and that `PluginCard` bounds its height. Both
-  name shapes this template chose, so upstream could only find them by growing an interface for
-  plugin authors to implement — a real architectural imposition the plugin system does not currently
-  make. Probably the right answer is that they stay here; worth revisiting if a second plugin
-  repeats them.
+- **Move the last local rule upstream, or accept that it stays local.** `tools/check-rules.py`
+  checks two things, and only one of them is this kind of rule: that `PluginRepository` returns
+  `Result`. (The other is that the SDK stays in one file, which upstream already enforces from the
+  other direction.) It names a shape this template chose, so upstream could only find it by growing
+  an interface for plugin authors to implement — a real architectural imposition the plugin system
+  does not currently make. Probably the right answer is that it stays here; worth revisiting if a
+  second plugin repeats it.
 
 - **Publish `plugin-sdk` and `plugin-sdk-gradle` to Maven Central.** Until then every developer has
   to build them from a Capture App checkout into their own Maven Local, which is the single biggest

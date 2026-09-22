@@ -8,4 +8,14 @@
     <string name="plugin_error_prefix">Could not read from DHIS2:</string>
     <!-- Compose Multiplatform substitutes positional %N$s placeholders; a bare %d is left alone. -->
     <string name="plugin_program_count">%1$s program(s) synced to this device</string>
+
+    <!-- The data set body. Same reason as above: a hardcoded string is a string values-es/ can
+         never reach. -->
+    <string name="data_set_body_title">Rendered by a plugin</string>
+    <string name="data_set_body_explanation">The host\'s table for this data set was replaced, and its own top bar, save button and bottom bar were kept. Version %1$s.</string>
+    <string name="data_set_body_instance_heading">The instance the host handed us</string>
+    <string name="data_set_body_data_set">Data set</string>
+    <string name="data_set_body_period">Period</string>
+    <string name="data_set_body_org_unit">Org unit</string>
+    <string name="data_set_body_attribute_option_combo">Attr. option combo</string>
 </resources>

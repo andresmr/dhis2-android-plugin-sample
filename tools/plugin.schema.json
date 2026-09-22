@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/dhis2/dhis2-android-plugin-sample/tools/plugin.schema.json",
+  "$id": "plugin.schema.json",
   "title": "DHIS2 Android plugin identity",
   "description": "Who this plugin is. The build reads it in settings.gradle.kts; tools/identity.py reads it for the Python gates. Nothing else may repeat these values \u2014 tools/check-identity.py fails when the source tree and this file disagree.",
   "type": "object",
@@ -105,9 +105,6 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "source": {
-          "type": "string"
-        },
         "formatVersion": {
           "type": "integer"
         },

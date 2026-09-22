@@ -85,8 +85,10 @@ Full walkthrough: [`docs/workflows/initialise-plugin.md`](docs/workflows/initial
 
 ### 3. Write `local.properties`
 
-In **this** repository. Step 2 writes one for you from `local.properties.example` if it was absent;
-it is gitignored and must never be committed.
+In **this** repository. Copy `local.properties.example`, or let step 2 write one for you; it is
+gitignored and must never be committed. Note that the harness credentials are read into
+`BuildConfig`, so they are readable in any harness APK you hand to someone — another reason to use
+a development server and a throwaway account.
 
 ```properties
 # Required — without it, configuration aborts with an explicit error.

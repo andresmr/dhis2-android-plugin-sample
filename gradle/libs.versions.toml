@@ -13,26 +13,26 @@ composeMultiplatform = "1.10.3"
 # and wins in its own resolution, so the classes a plugin actually meets are 1.10.6. Compiling
 # against 1.10.5 is how `NoSuchMethodError: weight$default` happened.
 #
-# This is a hand-mirrored host fact, and the only one left: plugin-sdk-gradle's HostToolchain
-# publishes KOTLIN, COMPOSE (the CMP plugin version), COMPILE_SDK, JVM_TARGET, PLUGIN_SDK_VERSION
-# and DHIS2_SDK_VERSION — but not this. Until it does, raising the host's `compose` means raising
-# this too. See the backlog in AGENTS.md.
+# This is one of three hand-mirrored host facts, with `designSystem` and `dhis2AndroidCore` below.
+# plugin-sdk-gradle's HostToolchain publishes KOTLIN, COMPOSE (the CMP plugin version), COMPILE_SDK,
+# JVM_TARGET, PLUGIN_SDK_VERSION and DHIS2_SDK_VERSION — but it is `internal`, and it carries no
+# androidx Compose entry at all. Until it does, raising the host's `compose` means raising this too,
+# and no check can tell you the right value. See the backlog in AGENTS.md.
 androidxCompose = "1.10.6"
 # The DHIS2 design system, as the HOST provides it. Host-provided like Compose, so `compileOnly` in
 # the plugin modules and a real dependency only in the harness, which is what stands in for the host
-# locally. A third hand-mirrored host fact — see the backlog.
+# locally. The second of the three hand-mirrored host facts — see the backlog.
 #
 # Track the host, whatever that is — not the newest published. Compiling against a newer design
 # system than the host provides and meeting the older one at runtime is the NoSuchMethodError trap
 # with a major version behind it.
 designSystem = "1.0.0-SNAPSHOT"
 pluginSdk = "0.1.3-SNAPSHOT"
-# Only the harness app declares the SDK; :plugin gets it from the bundle plugin at the host's
-# version. Keep this equal to what that plugin injects — see AGENTS.md.
 # The DHIS2 SDK, as the HOST provides it — the harness only. :plugin never declares it: the bundle
-# plugin injects it `strictly` from HostToolchain, and `./gradlew checkHostAlignment` fails when this
-# drifts from what :plugin resolved. The harness building its D2 from a different SDK than the plugin
-# compiled against would quietly stop it being evidence of anything.
+# plugin injects it from HostToolchain as a plain version, not `strictly`, and
+# `./gradlew checkHostAlignment` fails when this drifts from what :plugin resolved. The harness
+# building its D2 from a different SDK than the plugin compiled against would quietly stop it being
+# evidence of anything. The third of the three hand-mirrored host facts — see the backlog.
 #
 # It cannot be read automatically: HostToolchain is `internal`, so a plugin author's build cannot see
 # it. When this and :plugin disagree, the thing to distrust is your *branch ref*, not ~/.m2: a

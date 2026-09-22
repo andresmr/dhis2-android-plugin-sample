@@ -38,8 +38,8 @@ import org.jetbrains.compose.resources.stringResource
  * The plugin's whole UI, as a function of [state] alone.
  *
  * No `Dhis2PluginContext`, no SDK, no suspending work — so it renders in an `@Preview` with data you
- * supply, which is by far the fastest loop for UI work. That is architecture rule 2, and it is
- * enforced by the build.
+ * supply, which is by far the fastest loop for UI work. That is architecture rule 2, and
+ * `checkPluginConventions` enforces it here because this file is in `commonMain`.
  *
  * **Every colour, space, corner and text style comes from the DHIS2 design system**, not from raw
  * hex or Material's defaults. That is the point: the host renders this inside its own screen, and a
@@ -54,7 +54,8 @@ import org.jetbrains.compose.resources.stringResource
  * **Deliberately short.** The host renders this at `HOME_ABOVE_PROGRAM_LIST`: a non-scrolling
  * `Column` above its own programme list. Height taken here is height taken from the app, and
  * anything past the viewport is unreachable rather than scrollable — hence `heightIn` plus
- * `verticalScroll`, which `tools/check-rules.py` checks for by name.
+ * `verticalScroll`. No gate checks this: the rule that did was removed on purpose, since how much
+ * room a plugin wants is the plugin author's decision. The host clips at 240 dp either way.
  *
  * Note the layout APIs used have no defaulted parameters, and neither does `DHIS2Theme`. The host
  * declares androidx Compose separately from CMP, so a defaulted overload compiled here can meet a

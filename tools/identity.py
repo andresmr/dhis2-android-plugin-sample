@@ -42,6 +42,9 @@ PLUGIN_ID = re.compile(r"^[a-z][a-z0-9]*(\.[a-z0-9][a-z0-9-]*)+$")
 ENTRY_POINT = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 VERSION = re.compile(r"^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+# Mirrors tools/plugin.schema.json. The two used to disagree, so ./verify.sh passed a UID the
+# schema rejected and nothing said so.
+UID = re.compile(r"^[A-Za-z][A-Za-z0-9]{10}$")
 
 # A package segment that is a Kotlin or Java keyword reaches Compose Resources as
 # `packageOfResClass`, which then emits a generated `Res` class in a package needing backticks —
@@ -138,15 +141,37 @@ def validate_slot_config(data, points):
                 % slot
             )
 
+        field = CONFIGURED_INJECTION_POINTS.get(slot)
+        if field is None:
+            continue
+
+        values = (slot_config.get(slot) or {}).get(field)
+        if values is None:
+            continue
+        if not isinstance(values, list):
+            problems.append("slotConfig.%s.%s should be a list of UIDs." % (slot, field))
+            continue
+
+        for value in values:
+            if not isinstance(value, str) or not UID.match(value):
+                problems.append(
+                    "slotConfig.%s.%s contains %r, which is not a DHIS2 UID (11 characters, "
+                    "starting with a letter). The host would match it against nothing."
+                    % (slot, field, value)
+                )
+
     return problems
 
 
 def derive(data):
-    """The four values computed from `package`, added in place."""
+    """The two values computed from `package`, added in place.
+
+    `resourcePackage` and `harnessApplicationId` are derived the same way, but only
+    `settings.gradle.kts` needs them, and it computes them itself — deriving them here as well
+    gave two definitions of one rule and no reader for this one.
+    """
     data["packagePath"] = data["package"].replace(".", "/")
     data["entryPointFqcn"] = "%s.%s" % (data["package"], data["entryPoint"])
-    data["resourcePackage"] = "%s.generated.resources" % data["package"]
-    data["harnessApplicationId"] = "%s.harness" % data["package"]
     return data
 
 

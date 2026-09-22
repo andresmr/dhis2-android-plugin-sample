@@ -303,7 +303,6 @@ def collect(args):
             ],
         },
         "template": {
-            "source": "dhis2/dhis2-android-plugin-sample",
             "formatVersion": 1,
             "initialised": False,
         },
@@ -358,8 +357,7 @@ def slot_configuration(args):
 def write_plugin_json(target, initialised):
     """Write plugin.json, dropping the derived keys — they are computed, never stored."""
     data = {key: value for key, value in target.items()
-            if key not in ("packagePath", "entryPointFqcn", "resourcePackage",
-                           "harnessApplicationId")}
+            if key not in ("packagePath", "entryPointFqcn")}
     data["template"]["initialised"] = initialised
     (ROOT / "plugin.json").write_text(
         json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -623,23 +621,6 @@ def report(target, verified):
     say("    - An older harness may still be installed under its old applicationId.")
 
 
-def report_json(target, verified):
-    print(json.dumps({
-        "status": "initialised",
-        "name": target["name"],
-        "slug": target["slug"],
-        "pluginId": target["pluginId"],
-        "package": target["package"],
-        "entryPoint": target["entryPoint"],
-        "entryPointFqcn": target["entryPointFqcn"],
-        "version": target["version"],
-        "injectionPoints": target["injectionPoints"],
-        "slotConfig": target.get("slotConfig", {}),
-        "verified": verified,
-        "committed": False,
-    }, indent=2))
-
-
 # ─────────────────────────────────────────────────────────────── entry point
 
 
@@ -682,14 +663,12 @@ examples:
                              "(default: keep what plugin.json says)")
     parser.add_argument("--data-set-uid", action="append", default=[], metavar="UID",
                         help="data set the DATA_SET_INSTANCE_CONTENT slot applies to; repeatable")
-    parser.add_argument("--json", action="store_true", help="machine-readable result on stdout")
     parser.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     parser.add_argument("--force", action="store_true",
                         help="re-initialise an already-initialised fork (a rename)")
     parser.add_argument("--no-verify", action="store_true", help="skip the closing ./verify.sh")
     parser.add_argument("--allow-dirty", action="store_true",
                         help="proceed with an unclean working tree")
-    parser.add_argument("--commit", action="store_true", help="commit the result as well")
     return parser.parse_args(argv)
 
 
@@ -775,14 +754,8 @@ def main(argv=None):
 
     if use_git:
         run(["git", "add", "-A"])
-        if args.commit:
-            run(["git", "commit", "-q", "-m",
-                 "chore: initialise from the DHIS2 plugin template as %s" % target["name"]])
 
-    if args.json:
-        report_json(target, verified)
-    else:
-        report(target, verified)
+    report(target, verified)
 
     return EXIT_OK if verified or args.no_verify else EXIT_PREFLIGHT
 

@@ -120,7 +120,7 @@ class HarnessSession(private val context: Context) {
     }
 
     private fun configuration(): D2Configuration = D2Configuration(
-        appName = "dhis2-android-plugin-sample harness",
+        appName = "${BuildConfig.PLUGIN_ID} harness",
         appVersion = "1.0.0",
         readTimeoutInSeconds = 30,
         connectTimeoutInSeconds = 30,

@@ -1,3 +1,7 @@
+# NOTE: nothing in plugin/build.gradle.kts references this file today — the KMP Android
+# library block declares neither proguardFiles nor consumerProguardFiles, and the bundle
+# ships a DEX the host loads directly rather than an AAR anyone runs R8 over. Kept because
+# the keep rule is still the right one the day either changes.
 # Consumer ProGuard rules.
 # When :app (or any consumer) enables R8/ProGuard, keep the plugin entry point and its public
 # members so reflective loading via PluginMetadata.entryPoint works.

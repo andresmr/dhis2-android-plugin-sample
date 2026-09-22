@@ -52,10 +52,10 @@ private fun FailedPreview() {
 private fun DataSetBodyPreview() {
     DHIS2Theme {
         DataSetBodyPlaceholder(
-            dataSetUid = "lyLU2wR22tC",
+            dataSetUid = "YourDataSet",
             periodId = "202401",
-            organisationUnitUid = "DiszpKrYNg8",
-            attributeOptionComboUid = "HllvX50cXC0",
+            organisationUnitUid = "YourOrgUnit",
+            attributeOptionComboUid = "DefaultAttrC",
             pluginVersion = PREVIEW_VERSION,
         )
     }

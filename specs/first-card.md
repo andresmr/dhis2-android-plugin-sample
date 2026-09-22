@@ -50,6 +50,8 @@ real answer rather than a broken one.
 Capped at 160 dp, well inside the host's budget. The host renders this above its own programme list
 in a **non-scrolling** column, so height taken here is height taken from the app and anything past
 the viewport is unreachable. `PluginCard` bounds itself with `heightIn(max = 160.dp)` plus
-`verticalScroll`, which is also what `tools/check-rules.py` looks for.
+`verticalScroll`. Nothing checks that — the rule that used to was deleted deliberately, because a
+plugin's height budget is the plugin author's call. The host caps the slot at 240 dp regardless,
+and clips beyond it.
 
 Everything is visible at rest; nothing hides behind a toggle.

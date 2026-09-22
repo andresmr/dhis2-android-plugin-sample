@@ -23,6 +23,15 @@ import org.hisp.dhis.mobile.ui.designsystem.theme.Spacing
 import org.hisp.dhis.mobile.ui.designsystem.theme.SurfaceColor
 import org.hisp.dhis.mobile.ui.designsystem.theme.TextColor
 import org.hisp.dhis.mobile.ui.designsystem.theme.getTextStyle
+import org.jetbrains.compose.resources.stringResource
+import org.dhis2.mobile.plugin.template.generated.resources.Res
+import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_attribute_option_combo
+import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_data_set
+import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_explanation
+import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_instance_heading
+import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_org_unit
+import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_period
+import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_title
 
 /**
  * What the template renders in place of the host's data set table, at
@@ -59,7 +68,7 @@ fun DataSetBodyPlaceholder(
             .padding(Spacing.Spacing16),
     ) {
         Text(
-            text = "Rendered by a plugin",
+            text = stringResource(Res.string.data_set_body_title),
             style = getTextStyle(DHIS2TextStyle.TITLE_MEDIUM),
             color = TextColor.OnSurface,
             modifier = Modifier.fillMaxWidth(),
@@ -69,9 +78,7 @@ fun DataSetBodyPlaceholder(
         Spacer(modifier = Modifier.height(Spacing.Spacing4))
 
         Text(
-            text =
-                "The host's table for this data set was replaced, and its own top bar, save " +
-                    "button and bottom bar were kept. Template v$pluginVersion.",
+            text = stringResource(Res.string.data_set_body_explanation, pluginVersion),
             style = getTextStyle(DHIS2TextStyle.BODY_MEDIUM),
             color = TextColor.OnSurfaceVariant,
         )
@@ -85,15 +92,18 @@ fun DataSetBodyPlaceholder(
         ) {
             Column(modifier = Modifier.padding(Spacing.Spacing12)) {
                 Text(
-                    text = "The instance the host handed us",
+                    text = stringResource(Res.string.data_set_body_instance_heading),
                     style = getTextStyle(DHIS2TextStyle.TITLE_SMALL),
                     color = TextColor.OnSurface,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Spacing8))
-                IdentifierRow(label = "Data set", value = dataSetUid)
-                IdentifierRow(label = "Period", value = periodId)
-                IdentifierRow(label = "Org unit", value = organisationUnitUid)
-                IdentifierRow(label = "Attr. option combo", value = attributeOptionComboUid)
+                IdentifierRow(label = stringResource(Res.string.data_set_body_data_set), value = dataSetUid)
+                IdentifierRow(label = stringResource(Res.string.data_set_body_period), value = periodId)
+                IdentifierRow(label = stringResource(Res.string.data_set_body_org_unit), value = organisationUnitUid)
+                IdentifierRow(
+                    label = stringResource(Res.string.data_set_body_attribute_option_combo),
+                    value = attributeOptionComboUid,
+                )
             }
         }
     }

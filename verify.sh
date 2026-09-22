@@ -27,14 +27,29 @@ BUNDLE_DIR="plugin/build/outputs/plugin-bundle"
 # array as unbound and aborts. The += form keeps the args properly quoted.
 GRADLE_ARGS=()
 
+COLD=0
 for arg in "$@"; do
   case "$arg" in
-    --cold) ;;
-    *) fail_early "unknown argument: $arg  (--cold)" ;;
+    --cold) COLD=1 ;;
+    -h|--help)
+      cat <<'USAGE'
+./verify.sh [--cold]
+
+Runs every gate, in order, and stops at the first failure:
+  the spec gate, the identity gate, this plugin's own rules, the Gradle
+  checks and tests, the bundle build, and the bundle's layout.
+
+  --cold   build in a throwaway Gradle home, so nothing is reused from a
+           previous run. Maven Local is deliberately kept: plugin-sdk lives
+           only there, so discarding it would fail before anything ran.
+USAGE
+      exit 0
+      ;;
+    *) fail_early "unknown argument: $arg  (--cold, --help)" ;;
   esac
 done
 
-if [[ "${1:-}" == "--cold" || "${2:-}" == "--cold" ]]; then
+if [[ "$COLD" == "1" ]]; then
   COLD_ROOT="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$COLD_ROOT'" EXIT
@@ -133,7 +148,7 @@ ZIP="$(find "$BUNDLE_DIR" -maxdepth 1 -name '*.zip' -print -quit 2>/dev/null || 
 # host-provided class is what produces ClassCastException / NoSuchMethodError at load time, and it
 # is invisible until a device rejects it. The Gradle plugin checks the AAR; this checks the artefact
 # that actually ships.
-step "Bundle contains only this plugin's classes"
+step "Bundle layout is what the host expects"
 if command -v unzip >/dev/null 2>&1; then
   ENTRIES="$(unzip -Z1 "$ZIP")"
   # Anything outside android/ (plus the signature block) means the layout changed underneath us.
