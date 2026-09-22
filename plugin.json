@@ -1,12 +1,21 @@
 {
   "$schema": "tools/plugin.schema.json",
-  "name": "My DHIS2 plugin",
-  "slug": "dhis2-android-plugin-template",
-  "pluginId": "org.dhis2.mobile.plugin.template",
-  "package": "org.dhis2.mobile.plugin.template",
-  "entryPoint": "MyPlugin",
+  "name": "Stock Management",
+  "slug": "stock-management",
+  "pluginId": "org.dhis2.stock-management",
+  "package": "org.dhis2.stock",
+  "entryPoint": "StockPlugin",
   "version": "0.1.0",
-  "injectionPoints": ["HOME_ABOVE_PROGRAM_LIST"],
+  "injectionPoints": [
+    "DATA_SET_INSTANCE_CONTENT"
+  ],
+  "slotConfig": {
+    "DATA_SET_INSTANCE_CONTENT": {
+      "dataSetUids": [
+        "BfMAe6Itzgt"
+      ]
+    }
+  },
   "conventions": {
     "sdkAllowed": [
       "plugin/src/androidMain/kotlin/{packagePath}/data/**/*.kt"
@@ -17,6 +26,6 @@
   },
   "template": {
     "formatVersion": 1,
-    "initialised": false
+    "initialised": true
   }
 }

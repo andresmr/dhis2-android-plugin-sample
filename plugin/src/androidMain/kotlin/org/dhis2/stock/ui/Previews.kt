@@ -1,8 +1,8 @@
-package org.dhis2.mobile.plugin.template.ui
+package org.dhis2.stock.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import org.dhis2.mobile.plugin.template.model.PluginSummary
+import org.dhis2.stock.model.PluginSummary
 import org.hisp.dhis.mobile.ui.designsystem.theme.DHIS2Theme
 
 /**

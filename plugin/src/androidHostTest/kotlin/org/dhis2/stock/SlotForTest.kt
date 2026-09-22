@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.template
+package org.dhis2.stock
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

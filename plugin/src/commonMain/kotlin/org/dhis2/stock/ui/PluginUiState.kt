@@ -1,6 +1,6 @@
-package org.dhis2.mobile.plugin.template.ui
+package org.dhis2.stock.ui
 
-import org.dhis2.mobile.plugin.template.model.PluginSummary
+import org.dhis2.stock.model.PluginSummary
 
 /**
  * Everything the plugin's UI renders, in one place.

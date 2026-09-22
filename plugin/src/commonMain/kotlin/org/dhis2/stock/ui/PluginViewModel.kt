@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.template.ui
+package org.dhis2.stock.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.dhis2.mobile.plugin.template.repository.PluginRepository
+import org.dhis2.stock.repository.PluginRepository
 
 /**
  * Holds the plugin's state, and nothing else.

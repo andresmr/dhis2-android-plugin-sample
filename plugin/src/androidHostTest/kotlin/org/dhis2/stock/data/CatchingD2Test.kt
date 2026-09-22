@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.template.data
+package org.dhis2.stock.data
 
 import org.hisp.dhis.android.core.maintenance.D2Error
 import org.hisp.dhis.android.core.maintenance.D2ErrorCode

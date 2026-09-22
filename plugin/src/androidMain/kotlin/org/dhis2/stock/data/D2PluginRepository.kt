@@ -1,9 +1,9 @@
-package org.dhis2.mobile.plugin.template.data
+package org.dhis2.stock.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.dhis2.mobile.plugin.template.model.PluginSummary
-import org.dhis2.mobile.plugin.template.repository.PluginRepository
+import org.dhis2.stock.model.PluginSummary
+import org.dhis2.stock.repository.PluginRepository
 import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.maintenance.D2Error
 

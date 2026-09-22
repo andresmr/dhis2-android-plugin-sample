@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.template.ui
+package org.dhis2.stock.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
@@ -19,12 +19,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import org.dhis2.mobile.plugin.template.generated.resources.Res
-import org.dhis2.mobile.plugin.template.generated.resources.plugin_error_prefix
-import org.dhis2.mobile.plugin.template.generated.resources.plugin_icon
-import org.dhis2.mobile.plugin.template.generated.resources.plugin_loading
-import org.dhis2.mobile.plugin.template.generated.resources.plugin_program_count
-import org.dhis2.mobile.plugin.template.generated.resources.plugin_title
+import org.dhis2.stock.generated.resources.Res
+import org.dhis2.stock.generated.resources.plugin_error_prefix
+import org.dhis2.stock.generated.resources.plugin_icon
+import org.dhis2.stock.generated.resources.plugin_loading
+import org.dhis2.stock.generated.resources.plugin_program_count
+import org.dhis2.stock.generated.resources.plugin_title
 import org.hisp.dhis.mobile.ui.designsystem.theme.DHIS2TextStyle
 import org.hisp.dhis.mobile.ui.designsystem.theme.Radius
 import org.hisp.dhis.mobile.ui.designsystem.theme.Spacing

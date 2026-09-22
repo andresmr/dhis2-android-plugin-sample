@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.template.model
+package org.dhis2.stock.model
 
 /**
  * Everything this plugin knows about the DHIS2 database on this device, as plain data.

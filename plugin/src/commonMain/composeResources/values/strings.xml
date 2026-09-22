@@ -3,7 +3,7 @@
     <!-- Every string the card shows. Keeping them here rather than in the Composable is what makes
          values-es/ possible at all — cheap to keep from day one, expensive to retrofit once a
          string has been hardcoded. -->
-    <string name="plugin_title">My DHIS2 plugin</string>
+    <string name="plugin_title">Stock Management</string>
     <string name="plugin_loading">Loading…</string>
     <string name="plugin_error_prefix">Could not read from DHIS2:</string>
     <!-- Compose Multiplatform substitutes positional %N$s placeholders; a bare %d is left alone. -->

@@ -1,10 +1,10 @@
-package org.dhis2.mobile.plugin.template.slots
+package org.dhis2.stock.slots
 
 import androidx.compose.runtime.Composable
 import org.dhis2.mobile.plugin.sdk.DataSetInstanceSlotArguments
 import org.dhis2.mobile.plugin.sdk.Dhis2PluginContext
 import org.dhis2.mobile.plugin.sdk.LocalSlotContentPadding
-import org.dhis2.mobile.plugin.template.ui.DataSetBodyPlaceholder
+import org.dhis2.stock.ui.DataSetBodyPlaceholder
 
 /**
  * `DATA_SET_INSTANCE_CONTENT`: the body of the data set instance screen, in place of the host's

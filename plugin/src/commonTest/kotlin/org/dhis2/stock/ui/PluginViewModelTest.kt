@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.template.ui
+package org.dhis2.stock.ui
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -7,8 +7,8 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.dhis2.mobile.plugin.template.model.PluginSummary
-import org.dhis2.mobile.plugin.template.repository.PluginRepository
+import org.dhis2.stock.model.PluginSummary
+import org.dhis2.stock.repository.PluginRepository
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

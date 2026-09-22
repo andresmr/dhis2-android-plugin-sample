@@ -1,6 +1,6 @@
-package org.dhis2.mobile.plugin.template.repository
+package org.dhis2.stock.repository
 
-import org.dhis2.mobile.plugin.template.model.PluginSummary
+import org.dhis2.stock.model.PluginSummary
 
 /**
  * Everything this plugin needs from DHIS2, in the plugin's own vocabulary.

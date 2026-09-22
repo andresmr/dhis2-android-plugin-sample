@@ -1,4 +1,4 @@
-package org.dhis2.mobile.plugin.template.ui
+package org.dhis2.stock.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,14 +24,14 @@ import org.hisp.dhis.mobile.ui.designsystem.theme.SurfaceColor
 import org.hisp.dhis.mobile.ui.designsystem.theme.TextColor
 import org.hisp.dhis.mobile.ui.designsystem.theme.getTextStyle
 import org.jetbrains.compose.resources.stringResource
-import org.dhis2.mobile.plugin.template.generated.resources.Res
-import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_attribute_option_combo
-import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_data_set
-import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_explanation
-import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_instance_heading
-import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_org_unit
-import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_period
-import org.dhis2.mobile.plugin.template.generated.resources.data_set_body_title
+import org.dhis2.stock.generated.resources.Res
+import org.dhis2.stock.generated.resources.data_set_body_attribute_option_combo
+import org.dhis2.stock.generated.resources.data_set_body_data_set
+import org.dhis2.stock.generated.resources.data_set_body_explanation
+import org.dhis2.stock.generated.resources.data_set_body_instance_heading
+import org.dhis2.stock.generated.resources.data_set_body_org_unit
+import org.dhis2.stock.generated.resources.data_set_body_period
+import org.dhis2.stock.generated.resources.data_set_body_title
 
 /**
  * What the template renders in place of the host's data set table, at

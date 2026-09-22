@@ -1,11 +1,11 @@
-package org.dhis2.mobile.plugin.template.slots
+package org.dhis2.stock.slots
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import org.dhis2.mobile.plugin.sdk.Dhis2PluginContext
-import org.dhis2.mobile.plugin.template.ui.PluginCard
-import org.dhis2.mobile.plugin.template.ui.PluginViewModel
+import org.dhis2.stock.ui.PluginCard
+import org.dhis2.stock.ui.PluginViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
