@@ -1,9 +1,9 @@
-package org.dhis2.stock.data
+package org.dhis2.datasetsections.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.dhis2.stock.model.DataSetSection
-import org.dhis2.stock.repository.PluginRepository
+import org.dhis2.datasetsections.model.DataSetSection
+import org.dhis2.datasetsections.repository.PluginRepository
 import org.hisp.dhis.android.core.D2
 import org.hisp.dhis.android.core.dataset.Section
 import org.hisp.dhis.android.core.maintenance.D2Error

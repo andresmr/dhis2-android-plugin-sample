@@ -1,10 +1,10 @@
 {
   "$schema": "tools/plugin.schema.json",
-  "name": "Stock Management",
-  "slug": "stock-management",
-  "pluginId": "org.dhis2.stock-management",
-  "package": "org.dhis2.stock",
-  "entryPoint": "StockPlugin",
+  "name": "Data Set Sections",
+  "slug": "data-set-sections",
+  "pluginId": "org.dhis2.data-set-sections",
+  "package": "org.dhis2.datasetsections",
+  "entryPoint": "DataSetSectionsPlugin",
   "version": "0.2.0",
   "injectionPoints": [
     "DATA_SET_INSTANCE_CONTENT"

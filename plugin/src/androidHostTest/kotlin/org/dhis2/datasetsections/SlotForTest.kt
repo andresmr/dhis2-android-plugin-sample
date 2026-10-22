@@ -1,4 +1,4 @@
-package org.dhis2.stock
+package org.dhis2.datasetsections
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

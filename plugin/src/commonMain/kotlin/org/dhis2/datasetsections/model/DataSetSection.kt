@@ -1,4 +1,4 @@
-package org.dhis2.stock.model
+package org.dhis2.datasetsections.model
 
 /**
  * One section of a data set, as the plugin needs it.

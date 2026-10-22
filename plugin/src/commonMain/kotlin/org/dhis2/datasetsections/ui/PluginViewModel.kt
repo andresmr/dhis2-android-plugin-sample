@@ -1,4 +1,4 @@
-package org.dhis2.stock.ui
+package org.dhis2.datasetsections.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,9 +7,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.dhis2.stock.model.DataSetSection
-import org.dhis2.stock.model.periodLabelOf
-import org.dhis2.stock.repository.PluginRepository
+import org.dhis2.datasetsections.model.DataSetSection
+import org.dhis2.datasetsections.model.periodLabelOf
+import org.dhis2.datasetsections.repository.PluginRepository
 
 /**
  * Holds the plugin's state, and nothing else.

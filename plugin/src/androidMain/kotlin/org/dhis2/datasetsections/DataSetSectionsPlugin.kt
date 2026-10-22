@@ -1,4 +1,4 @@
-package org.dhis2.stock
+package org.dhis2.datasetsections
 
 import androidx.compose.runtime.Composable
 import org.dhis2.mobile.plugin.sdk.DataSetInstanceSlotArguments
@@ -6,10 +6,10 @@ import org.dhis2.mobile.plugin.sdk.Dhis2Plugin
 import org.dhis2.mobile.plugin.sdk.Dhis2PluginContext
 import org.dhis2.mobile.plugin.sdk.LocalSlotArguments
 import org.dhis2.mobile.plugin.sdk.SlotArguments
-import org.dhis2.stock.data.D2PluginRepository
-import org.dhis2.stock.repository.PluginRepository
-import org.dhis2.stock.slots.DataSetInstanceSlot
-import org.dhis2.stock.ui.PluginViewModel
+import org.dhis2.datasetsections.data.D2PluginRepository
+import org.dhis2.datasetsections.repository.PluginRepository
+import org.dhis2.datasetsections.slots.DataSetInstanceSlot
+import org.dhis2.datasetsections.ui.PluginViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -29,7 +29,7 @@ import org.koin.dsl.module
  * administrator, in the server dataStore, and arrive through [Dhis2PluginContext.pluginMetadata].
  * A plugin that declared its own identity could rename itself into someone else's configuration.
  */
-class StockPlugin : Dhis2Plugin {
+class DataSetSectionsPlugin : Dhis2Plugin {
 
     /**
      * The plugin's own bindings, loaded into a container private to this plugin.

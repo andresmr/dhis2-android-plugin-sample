@@ -1,9 +1,9 @@
-package org.dhis2.stock.ui
+package org.dhis2.datasetsections.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import org.dhis2.stock.model.DataSetSection
-import org.dhis2.stock.model.PeriodLabel
+import org.dhis2.datasetsections.model.DataSetSection
+import org.dhis2.datasetsections.model.PeriodLabel
 import org.hisp.dhis.mobile.ui.designsystem.theme.DHIS2Theme
 
 /**

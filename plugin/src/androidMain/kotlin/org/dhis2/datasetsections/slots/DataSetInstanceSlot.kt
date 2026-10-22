@@ -1,4 +1,4 @@
-package org.dhis2.stock.slots
+package org.dhis2.datasetsections.slots
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -7,8 +7,8 @@ import androidx.compose.runtime.getValue
 import org.dhis2.mobile.plugin.sdk.DataSetInstanceSlotArguments
 import org.dhis2.mobile.plugin.sdk.Dhis2PluginContext
 import org.dhis2.mobile.plugin.sdk.LocalSlotContentPadding
-import org.dhis2.stock.ui.DataSetSectionsScreen
-import org.dhis2.stock.ui.PluginViewModel
+import org.dhis2.datasetsections.ui.DataSetSectionsScreen
+import org.dhis2.datasetsections.ui.PluginViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 /**

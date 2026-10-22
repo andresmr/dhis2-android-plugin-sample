@@ -421,7 +421,7 @@ dataStore entry. `tools/check-identity.py` says so out loud rather than failing,
 the symptom — the host's own screen, unchanged — looks exactly like the plugin failing to load.
 
 **Where a slot is *rendered*.** One file each, under `plugin/src/androidMain/kotlin/…/slots/`.
-`StockPlugin.content()` reads `LocalSlotArguments`, passes it to `slotFor`, and delegates. Adding a
+`DataSetSectionsPlugin.content()` reads `LocalSlotArguments`, passes it to `slotFor`, and delegates. Adding a
 slot is adding a file; a slot your plugin does not declare is an unused file you can delete once you
 are sure, not a branch you have to read past. Those files take a `Dhis2PluginContext`, which
 architecture rule 2 forbids for composables — they are the entry point's own layer split up, not UI,

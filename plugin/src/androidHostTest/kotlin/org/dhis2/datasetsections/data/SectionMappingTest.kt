@@ -1,4 +1,4 @@
-package org.dhis2.stock.data
+package org.dhis2.datasetsections.data
 
 import org.hisp.dhis.android.core.common.ObjectWithUid
 import org.hisp.dhis.android.core.dataset.Section

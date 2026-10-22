@@ -1,4 +1,4 @@
-package org.dhis2.stock.model
+package org.dhis2.datasetsections.model
 
 /**
  * The period of the instance the host opened, structured rather than formatted.

@@ -1,7 +1,7 @@
-package org.dhis2.stock.ui
+package org.dhis2.datasetsections.ui
 
-import org.dhis2.stock.model.DataSetSection
-import org.dhis2.stock.model.PeriodLabel
+import org.dhis2.datasetsections.model.DataSetSection
+import org.dhis2.datasetsections.model.PeriodLabel
 
 /**
  * Everything the plugin's UI renders, in one place.

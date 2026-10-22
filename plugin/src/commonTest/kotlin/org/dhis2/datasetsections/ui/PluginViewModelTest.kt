@@ -1,4 +1,4 @@
-package org.dhis2.stock.ui
+package org.dhis2.datasetsections.ui
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -8,9 +8,9 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.dhis2.stock.model.DataSetSection
-import org.dhis2.stock.model.PeriodLabel
-import org.dhis2.stock.repository.PluginRepository
+import org.dhis2.datasetsections.model.DataSetSection
+import org.dhis2.datasetsections.model.PeriodLabel
+import org.dhis2.datasetsections.repository.PluginRepository
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

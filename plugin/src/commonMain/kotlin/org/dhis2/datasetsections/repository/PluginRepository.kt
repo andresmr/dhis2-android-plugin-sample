@@ -1,6 +1,6 @@
-package org.dhis2.stock.repository
+package org.dhis2.datasetsections.repository
 
-import org.dhis2.stock.model.DataSetSection
+import org.dhis2.datasetsections.model.DataSetSection
 
 /**
  * Everything this plugin needs from DHIS2, in the plugin's own vocabulary.

@@ -3,7 +3,7 @@
     <!-- Every string the plugin shows. Keeping them here rather than in the Composable is what makes
          values-es/ possible at all — cheap to keep from day one, expensive to retrofit once a
          string has been hardcoded. -->
-    <string name="plugin_title">Stock Management</string>
+    <string name="plugin_title">Data Set Sections</string>
     <string name="plugin_loading">Loading…</string>
     <string name="plugin_error_prefix">Could not read from DHIS2:</string>
 
