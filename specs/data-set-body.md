@@ -4,17 +4,18 @@
 The second of the seed's two specs, one per slot. This one covers DATA_SET_INSTANCE_CONTENT: the
 slot where a plugin replaces the body of the host's data set instance screen.
 
-Like first-card.md it is meant to be replaced, not extended. Note how much of it is device
-scenarios: resolving a data set instance needs a real D2, and no JVM test can build one.
+What it covers now is only the plumbing: which slot the entry point and the harness choose, and
+the rules a replacement slot renders under. What is *rendered* there is data-set-sections.md's,
+which replaced the placeholder this spec was originally written for.
 -->
 
 ## Intent
 
 Someone who opens a data set the administrator has given to this plugin should see the plugin's own
 screen where the host's table would be, with the host's own top bar, save button and bottom bar
-still framing it. Before there is a form to show, the plugin draws the four identifiers of the
-instance that was opened — which is what proves it was selected for this data set and handed the
-right arguments, rather than rendering something plausible about the wrong one.
+still framing it. This spec covers how that screen is *reached* — that the entry point and the
+harness both pick the data set slot when, and only when, the host is really rendering one. What the
+screen then shows is data-set-sections.md's.
 
 ## Logic scenarios
 
@@ -47,7 +48,7 @@ host applies
 Given plugin.json declares DATA_SET_INSTANCE_CONTENT with the UID of a data set on my server
 When I run the harness
 Then it names the data set, period, org unit and attribute option combo it resolved, and the plugin
-draws those same four values
+renders against that instance rather than an empty screen
 
 @D2
 Given that UID edited to one no server has
@@ -64,13 +65,13 @@ LocalSlotContentPadding
 
 A data set that exists on the server, is assigned to at least one organisation unit inside the
 logged-in user's data capture scope, and has a period type its data input periods leave open. No
-data values are required: the harness resolves the instance's coordinates from metadata, and the
-placeholder displays them rather than reading them.
+data values are required: the harness resolves the instance's coordinates from metadata. What the
+screen itself needs is in data-set-sections.md.
 
 ## UI budget
 
 A replacement **owns** the region the host gives it, so filling the space is correct and scrolling is
-the plugin's job — `DataSetBodyPlaceholder` deliberately caps nothing.
+the plugin's job — whatever renders there caps nothing.
 
 What it must respect is `LocalSlotContentPadding`: the host's save button floats over this region,
 and content that ignores the padding has a last row nobody can reach.

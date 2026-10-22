@@ -9,7 +9,6 @@ import org.dhis2.mobile.plugin.sdk.SlotArguments
 import org.dhis2.stock.data.D2PluginRepository
 import org.dhis2.stock.repository.PluginRepository
 import org.dhis2.stock.slots.DataSetInstanceSlot
-import org.dhis2.stock.slots.HomeSlot
 import org.dhis2.stock.ui.PluginViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -57,7 +56,10 @@ class StockPlugin : Dhis2Plugin {
     @Composable
     override fun content(context: Dhis2PluginContext) {
         when (val slot = slotFor(LocalSlotArguments.current)) {
-            Slot.Home -> HomeSlot(context)
+            // This plugin declares only DATA_SET_INSTANCE_CONTENT, so the host never renders
+            // it here. The branch stays because `slotFor` is what is asserted, and a mapping with
+            // an unreachable case is still a mapping worth checking.
+            Slot.Home -> Unit
             is Slot.DataSetInstance -> DataSetInstanceSlot(slot.arguments, context)
         }
     }

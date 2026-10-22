@@ -1,21 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Every string the card shows. Keeping them here rather than in the Composable is what makes
+    <!-- Every string the plugin shows. Keeping them here rather than in the Composable is what makes
          values-es/ possible at all — cheap to keep from day one, expensive to retrofit once a
          string has been hardcoded. -->
     <string name="plugin_title">Stock Management</string>
     <string name="plugin_loading">Loading…</string>
     <string name="plugin_error_prefix">Could not read from DHIS2:</string>
-    <!-- Compose Multiplatform substitutes positional %N$s placeholders; a bare %d is left alone. -->
-    <string name="plugin_program_count">%1$s program(s) synced to this device</string>
 
-    <!-- The data set body. Same reason as above: a hardcoded string is a string values-es/ can
-         never reach. -->
-    <string name="data_set_body_title">Rendered by a plugin</string>
-    <string name="data_set_body_explanation">The host\'s table for this data set was replaced, and its own top bar, save button and bottom bar were kept. Version %1$s.</string>
-    <string name="data_set_body_instance_heading">The instance the host handed us</string>
-    <string name="data_set_body_data_set">Data set</string>
-    <string name="data_set_body_period">Period</string>
-    <string name="data_set_body_org_unit">Org unit</string>
-    <string name="data_set_body_attribute_option_combo">Attr. option combo</string>
+    <!-- The period of the instance the host opened. The state carries it structured — Month(2024, 1)
+         — precisely so these can be translated; a period formatted into a String by the ViewModel
+         could never reach values-es/, because month names live here.
+         Compose Multiplatform substitutes positional %N$s placeholders; a bare %d is left alone. -->
+    <string name="period_day">%1$s %2$s %3$s</string>
+    <string name="period_week">Week %1$s, %2$s</string>
+    <string name="period_month">%1$s %2$s</string>
+    <string name="period_quarter">Q%1$s %2$s</string>
+
+    <string name="month_1">January</string>
+    <string name="month_2">February</string>
+    <string name="month_3">March</string>
+    <string name="month_4">April</string>
+    <string name="month_5">May</string>
+    <string name="month_6">June</string>
+    <string name="month_7">July</string>
+    <string name="month_8">August</string>
+    <string name="month_9">September</string>
+    <string name="month_10">October</string>
+    <string name="month_11">November</string>
+    <string name="month_12">December</string>
 </resources>

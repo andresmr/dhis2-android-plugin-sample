@@ -3,13 +3,22 @@
     <string name="plugin_title">Mi complemento DHIS2</string>
     <string name="plugin_loading">Cargando…</string>
     <string name="plugin_error_prefix">No se pudo leer de DHIS2:</string>
-    <string name="plugin_program_count">%1$s programa(s) sincronizado(s) en este dispositivo</string>
 
-    <string name="data_set_body_title">Renderizado por un complemento</string>
-    <string name="data_set_body_explanation">La tabla del servidor para este conjunto de datos fue reemplazada, y se conservaron su barra superior, su botón de guardar y su barra inferior. Versión %1$s.</string>
-    <string name="data_set_body_instance_heading">La instancia que nos entregó la aplicación</string>
-    <string name="data_set_body_data_set">Conjunto de datos</string>
-    <string name="data_set_body_period">Período</string>
-    <string name="data_set_body_org_unit">Unidad organizativa</string>
-    <string name="data_set_body_attribute_option_combo">Comb. opciones de atributo</string>
+    <string name="period_day">%1$s de %2$s de %3$s</string>
+    <string name="period_week">Semana %1$s, %2$s</string>
+    <string name="period_month">%1$s de %2$s</string>
+    <string name="period_quarter">T%1$s %2$s</string>
+
+    <string name="month_1">enero</string>
+    <string name="month_2">febrero</string>
+    <string name="month_3">marzo</string>
+    <string name="month_4">abril</string>
+    <string name="month_5">mayo</string>
+    <string name="month_6">junio</string>
+    <string name="month_7">julio</string>
+    <string name="month_8">agosto</string>
+    <string name="month_9">septiembre</string>
+    <string name="month_10">octubre</string>
+    <string name="month_11">noviembre</string>
+    <string name="month_12">diciembre</string>
 </resources>

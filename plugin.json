@@ -5,7 +5,7 @@
   "pluginId": "org.dhis2.stock-management",
   "package": "org.dhis2.stock",
   "entryPoint": "StockPlugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "injectionPoints": [
     "DATA_SET_INSTANCE_CONTENT"
   ],
